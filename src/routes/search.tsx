@@ -3,7 +3,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/search")({
-  validateSearch: (search: Record<string, unknown>) => ({ q: String(search.q ?? "") }),
+  validateSearch: (search: Record<string, unknown>) => ({ q: String(search["q"] ?? "") }),
   head: () => ({
     meta: [
       { title: "Search Products — Remo Collections" },
