@@ -81,6 +81,24 @@ function CartPage() {
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="font-display text-2xl font-bold">Shopping Cart</h1>
 
+      {waLink && (
+        <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
+          <p className="font-display font-bold">Order placed successfully</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            If WhatsApp didn't open automatically, tap the button below to send your order details.
+          </p>
+          <a
+            href={waLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex rounded-md bg-accent px-6 py-3 text-sm font-bold text-accent-foreground shadow-card"
+          >
+            Send order on WhatsApp
+          </a>
+        </div>
+      )}
+
+
       {rows.length === 0 ? (
         <p className="mt-6 text-muted-foreground">
           Your cart is empty.{" "}
