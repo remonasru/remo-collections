@@ -31,6 +31,7 @@ function CartPage() {
   const { cart, products } = useStore();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", phone: "", payment: "Cash on Delivery" });
+  const [waLink, setWaLink] = useState<string | null>(null);
 
   const rows = cart
     .map((c) => ({ item: c, product: products.find((p) => p.id === c.productId) }))
@@ -60,10 +61,20 @@ function CartPage() {
       total,
     });
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsAppMessage(order))}`;
+
+    // Open WhatsApp synchronously (popup blockers / preview iframes block window.open otherwise)
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    setWaLink(url);
     clearCart();
     setOpen(false);
-    toast.success("Order placed! Redirecting to WhatsApp…");
-    window.open(url, "_blank", "noopener");
+    toast.success("Order placed! Opening WhatsApp…");
   }
 
   return (
