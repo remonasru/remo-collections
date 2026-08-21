@@ -17,7 +17,7 @@ export function ProductImage({ product, className }: { product: Product; classNa
     <div
       className={`flex h-full w-full items-center justify-center bg-secondary ${className ?? ""}`}
     >
-      <span className="px-4 text-center font-display text-lg font-semibold text-muted-foreground">
+      <span className="line-clamp-3 px-2 text-center font-display text-[11px] font-semibold leading-tight text-muted-foreground sm:text-sm">
         {product.title}
       </span>
     </div>
