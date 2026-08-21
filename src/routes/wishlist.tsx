@@ -28,7 +28,7 @@ function WishlistPage() {
           <Link to="/" className="font-semibold text-primary hover:underline">
             Start shopping
           </Link>
-challenge        </p>
+</p>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {items.map((p) => (
