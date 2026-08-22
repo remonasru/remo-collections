@@ -43,8 +43,8 @@ export const Route = createFileRoute("/cart")({
 function CartPage() {
   const { cart, products } = useStore();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ name: "", address: "", phone: "", payment: "Cash on Delivery" });
-  const [waLink, setWaLink] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: "", address: "", phone: "", payment: "COD" as "COD" | "UPI" });
+  const [done, setDone] = useState<{ wa: string; upi: string | null } | null>(null);
 
   const rows = cart
     .map((c) => ({ item: c, product: products.find((p) => p.id === c.productId) }))
@@ -58,12 +58,13 @@ function CartPage() {
       toast.error("Please enter a valid name, address and 10-digit mobile number");
       return;
     }
+    const isUpi = form.payment === "UPI";
     const order = placeOrder({
       customer: {
         name: form.name.trim(),
         address: form.address.trim(),
         phone: form.phone.trim(),
-        payment: form.payment,
+        payment: isUpi ? `UPI (${UPI_VPA})` : "Cash on Delivery",
       },
       items: rows.map((r) => ({
         title: r.product!.title,
@@ -73,43 +74,57 @@ function CartPage() {
       })),
       total,
     });
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsAppMessage(order))}`;
 
-    // Open WhatsApp synchronously (popup blockers / preview iframes block window.open otherwise)
-    const a = document.createElement("a");
-    a.href = url;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    const upi = isUpi ? buildUpiUrl(order.total, order.id) : null;
+    const wa = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsAppMessage(order))}`;
 
-    setWaLink(url);
+    // Trigger synchronously via a real link click (popup blockers swallow window.open)
+    if (upi) {
+      window.location.href = upi;
+      setTimeout(() => openUrl(wa), 1200);
+    } else {
+      openUrl(wa);
+    }
+
+    setDone({ wa, upi });
     clearCart();
     setOpen(false);
-    toast.success("Order placed! Opening WhatsApp…");
+    toast.success(isUpi ? "Opening your UPI app…" : "Order placed! Opening WhatsApp…");
   }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="font-display text-2xl font-bold">Shopping Cart</h1>
 
-      {waLink && (
+      {done && (
         <div className="mt-6 rounded-xl border border-border bg-card p-5 shadow-card">
           <p className="font-display font-bold">Order placed successfully</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            If WhatsApp didn't open automatically, tap the button below to send your order details.
+            {done.upi
+              ? "Complete the payment in your UPI app, then send the order details on WhatsApp."
+              : "If WhatsApp didn't open automatically, tap the button below to send your order details."}
           </p>
-          <a
-            href={waLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-4 inline-flex rounded-md bg-accent px-6 py-3 text-sm font-bold text-accent-foreground shadow-card"
-          >
-            Send order on WhatsApp
-          </a>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {done.upi && (
+              <a
+                href={done.upi}
+                className="inline-flex rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground shadow-card"
+              >
+                Pay via UPI
+              </a>
+            )}
+            <a
+              href={done.wa}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex rounded-md bg-accent px-6 py-3 text-sm font-bold text-accent-foreground shadow-card"
+            >
+              Send order on WhatsApp
+            </a>
+          </div>
         </div>
       )}
+
 
 
       {rows.length === 0 ? (
