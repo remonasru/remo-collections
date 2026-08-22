@@ -396,6 +396,7 @@ function Inventory() {
           <label className="text-xs font-bold uppercase text-muted-foreground">
             Price
             <input
+              key={`${p.id}-${p.price}`}
               defaultValue={p.price}
               onBlur={(e) => {
                 const v = Number(e.target.value);
