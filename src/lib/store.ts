@@ -5,6 +5,58 @@ export const CATEGORIES: Category[] = ["Men", "Women", "Kids"];
 export const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 export type Size = (typeof SIZES)[number];
 
+export const KIDS_SIZES = ["2-3Y", "4-5Y", "6-7Y", "8-9Y", "10-12Y"] as const;
+export const ALL_SIZES = [...SIZES, "Free Size", ...KIDS_SIZES] as const;
+
+export const SUBCATEGORIES: Record<Category, string[]> = {
+  Men: [
+    "Shirts (Casual)",
+    "Shirts (Formal)",
+    "Pants / Trousers",
+    "T-Shirts",
+    "Track Pants",
+    "Shorts",
+    "Ethnic Wear (Dhoti/Kurta)",
+    "Innerwear",
+    "Jackets / Hoodies",
+  ],
+  Women: [
+    "Sarees",
+    "Chudithar / Salwar Suits",
+    "Tops / Tunics",
+    "Leggings",
+    "Pattiyala",
+    "Shawls / Dupattas",
+    "Nightwear",
+    "Western Dresses",
+  ],
+  Kids: [
+    "Boys T-Shirts",
+    "Boys Shirts",
+    "Boys Shorts / Pants",
+    "Girls Dresses / Frocks",
+    "Girls Tops & Leggings",
+    "Ethnic Wear",
+    "Nightwear",
+    "Newborn Baby Clothing",
+  ],
+};
+
+export const COLORS: { name: string; hex: string }[] = [
+  { name: "Red", hex: "#dc2626" },
+  { name: "Blue", hex: "#2563eb" },
+  { name: "Pink", hex: "#ec4899" },
+  { name: "Black", hex: "#111827" },
+  { name: "White", hex: "#ffffff" },
+  { name: "Yellow", hex: "#facc15" },
+  { name: "Green", hex: "#16a34a" },
+  { name: "Grey", hex: "#6b7280" },
+  { name: "Maroon", hex: "#7f1d1d" },
+  { name: "Beige", hex: "#e7d8c0" },
+];
+
+export const FABRICS = ["Cotton", "Silk", "Denim", "Rayon", "Polyester", "Linen"] as const;
+
 export type Review = {
   id: string;
   name: string;
@@ -17,15 +69,19 @@ export type Product = {
   id: string;
   title: string;
   category: Category;
+  subCategory: string;
   price: number;
   mrp: number;
   description: string;
   sizes: string[];
+  colors: string[];
+  fabric: string;
   images: string[];
   inStock: boolean;
   reviews: Review[];
   createdAt: number;
 };
+
 
 export type CartItem = {
   id: string;
