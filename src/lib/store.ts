@@ -158,11 +158,48 @@ function persist() {
   }
 }
 
+/* ---------- staged (draft) mode for the admin panel ---------- */
+let staging = false;
+let dirty = false;
+
+function notify() {
+  listeners.forEach((l) => l());
+}
+
 function setState(updater: (s: StoreState) => StoreState) {
   load();
   state = updater(state);
+  if (staging) dirty = true;
+  else persist();
+  notify();
+}
+
+export function setStaging(on: boolean) {
+  staging = on;
+  if (!on) dirty = false;
+  notify();
+}
+
+export function commitChanges() {
   persist();
-  listeners.forEach((l) => l());
+  dirty = false;
+  notify();
+}
+
+export function discardChanges() {
+  loaded = false;
+  state = initial;
+  load();
+  dirty = false;
+  notify();
+}
+
+export function useDirty(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => dirty,
+    () => false,
+  );
 }
 
 function subscribe(cb: () => void) {
@@ -180,6 +217,7 @@ function getSnapshot() {
 export function useStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
 }
+
 
 /* ---------- products ---------- */
 export function addProduct(p: Omit<Product, "id" | "reviews" | "createdAt">) {
@@ -300,4 +338,19 @@ export function buildWhatsAppMessage(order: Order) {
     `*Order ID:* ${order.id}`,
   ];
   return lines.join("\n");
+}
+
+/* ---------- UPI ---------- */
+export const UPI_VPA = "remonasru-1@oksbi";
+export const UPI_PAYEE = "RemoCollections";
+
+export function buildUpiUrl(amount: number, orderId?: string) {
+  const parts = [
+    `pa=${encodeURIComponent(UPI_VPA)}`,
+    `pn=${encodeURIComponent(UPI_PAYEE)}`,
+    `am=${amount.toFixed(2)}`,
+    "cu=INR",
+  ];
+  if (orderId) parts.push(`tn=${encodeURIComponent(`Remo Order ${orderId}`)}`);
+  return `upi://pay?${parts.join("&")}`;
 }
