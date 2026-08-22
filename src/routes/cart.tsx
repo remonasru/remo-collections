@@ -4,15 +4,28 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
 import {
+  buildUpiUrl,
   buildWhatsAppMessage,
   clearCart,
   inr,
   placeOrder,
   removeFromCart,
   setCartQty,
+  UPI_VPA,
   useStore,
   WHATSAPP_NUMBER,
 } from "@/lib/store";
+
+function openUrl(url: string) {
+  const a = document.createElement("a");
+  a.href = url;
+  a.target = "_blank";
+  a.rel = "noopener noreferrer";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
