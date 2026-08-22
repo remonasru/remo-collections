@@ -114,15 +114,37 @@ type Tab = "add" | "inventory" | "orders";
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { products, orders } = useStore();
+  const dirty = useDirty();
   const [tab, setTab] = useState<Tab>("inventory");
 
+  useEffect(() => {
+    setStaging(true);
+    return () => {
+      discardChanges();
+      setStaging(false);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8 pb-28">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-extrabold">Admin Dashboard</h1>
         <button
           type="button"
-          onClick={onLogout}
+          onClick={() => {
+            if (dirty && !confirm("You have unsaved changes. Log out and discard them?")) return;
+            onLogout();
+          }}
           className="inline-flex items-center gap-2 rounded-md border border-input px-4 py-2 text-sm font-semibold"
         >
           <LogOut className="h-4 w-4" /> Logout
@@ -164,9 +186,48 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab === "inventory" && <Inventory />}
         {tab === "orders" && <Orders />}
       </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <p className="text-sm font-semibold">
+            {dirty ? (
+              <span className="text-destructive">Unsaved changes — click Save Changes to commit.</span>
+            ) : (
+              <span className="text-muted-foreground">All changes saved.</span>
+            )}
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!dirty}
+              onClick={() => {
+                if (confirm("Discard all unsaved changes?")) {
+                  discardChanges();
+                  toast.success("Changes discarded");
+                }
+              }}
+              className="rounded-md border border-input px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              disabled={!dirty}
+              onClick={() => {
+                commitChanges();
+                toast.success("All changes saved");
+              }}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-card disabled:opacity-50"
+            >
+              <Save className="h-4 w-4" /> Save Changes
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
