@@ -1,16 +1,20 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LogOut, Trash2 } from "lucide-react";
+import { LogOut, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
 import {
   addProduct,
   CATEGORIES,
+  commitChanges,
+  discardChanges,
   deleteProduct,
   inr,
   setOrderStatus,
+  setStaging,
   SIZES,
   updateProduct,
+  useDirty,
   useStore,
   type Category,
   type OrderStatus,
