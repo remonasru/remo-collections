@@ -299,7 +299,7 @@ function CartPage() {
                 type="submit"
                 className="flex-1 rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
               >
-                Confirm Order
+                {form.payment === "UPI" ? `Pay via UPI · ${inr(total)}` : "Confirm Order"}
               </button>
             </div>
           </form>
