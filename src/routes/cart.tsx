@@ -244,17 +244,44 @@ function CartPage() {
                   required
                 />
               </Field>
-              <Field label="Payment Preference">
-                <select
-                  value={form.payment}
-                  onChange={(e) => setForm({ ...form, payment: e.target.value })}
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option>Cash on Delivery</option>
-                  <option>UPI / Google Pay</option>
-                  <option>Bank Transfer</option>
-                </select>
+              <Field label="Payment Method">
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      ["COD", "Cash on Delivery", "Pay when it arrives"],
+                      ["UPI", "Pay via UPI", "GPay / PhonePe / Paytm"],
+                    ] as const
+                  ).map(([value, label, hint]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setForm({ ...form, payment: value })}
+                      aria-pressed={form.payment === value}
+                      className={`rounded-md border px-3 py-2.5 text-left text-sm font-bold ${
+                        form.payment === value
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-input bg-background"
+                      }`}
+                    >
+                      {label}
+                      <span
+                        className={`mt-0.5 block text-[11px] font-medium ${
+                          form.payment === value ? "opacity-80" : "text-muted-foreground"
+                        }`}
+                      >
+                        {hint}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {form.payment === "UPI" && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Paying {inr(total)} to <span className="font-semibold">{UPI_VPA}</span>. Your UPI app opens
+                    pre-filled, then WhatsApp confirmation is sent.
+                  </p>
+                )}
               </Field>
+
             </div>
             <div className="mt-4 flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm font-bold">
               <span>Total</span>
