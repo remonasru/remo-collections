@@ -339,3 +339,18 @@ export function buildWhatsAppMessage(order: Order) {
   ];
   return lines.join("\n");
 }
+
+/* ---------- UPI ---------- */
+export const UPI_VPA = "remonasru-1@oksbi";
+export const UPI_PAYEE = "RemoCollections";
+
+export function buildUpiUrl(amount: number, orderId?: string) {
+  const params = new URLSearchParams({
+    pa: UPI_VPA,
+    pn: UPI_PAYEE,
+    am: amount.toFixed(2),
+    cu: "INR",
+  });
+  if (orderId) params.set("tn", `Remo Order ${orderId}`);
+  return `upi://pay?${params.toString()}`;
+}
