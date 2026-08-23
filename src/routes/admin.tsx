@@ -5,14 +5,18 @@ import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
 import {
   addProduct,
+  ALL_SIZES,
   CATEGORIES,
+  COLORS,
   commitChanges,
   discardChanges,
   deleteProduct,
+  FABRICS,
   inr,
   setOrderStatus,
   setStaging,
   SIZES,
+  SUBCATEGORIES,
   updateProduct,
   useDirty,
   useStore,
