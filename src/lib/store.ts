@@ -230,7 +230,7 @@ function load() {
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<StoreState>;
       state = {
-        products: parsed.products ?? initial.products,
+        products: (parsed.products ?? initial.products).map(normalizeProduct),
         cart: parsed.cart ?? [],
         wishlist: parsed.wishlist ?? [],
         orders: parsed.orders ?? [],
