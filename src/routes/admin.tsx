@@ -258,8 +258,18 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
   const [fabric, setFabric] = useState<string>(FABRICS[0]);
   const [images, setImages] = useState<string[]>([]);
 
+  const MAX_IMAGES = 7;
+
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).slice(0, 5);
+    const picked = Array.from(e.target.files ?? []);
+    const room = MAX_IMAGES - images.length;
+    if (room <= 0) {
+      toast.error(`You can upload up to ${MAX_IMAGES} photos per product`);
+      e.target.value = "";
+      return;
+    }
+    if (picked.length > room) toast.info(`Only ${room} more photo(s) can be added`);
+    const files = picked.slice(0, room);
     const read = (f: File) =>
       new Promise<string>((resolve, reject) => {
         const fr = new FileReader();
@@ -269,10 +279,23 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       });
     try {
       const urls = await Promise.all(files.map(read));
-      setImages((prev) => [...prev, ...urls].slice(0, 5));
+      setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
     } catch {
       toast.error("Could not read the selected images");
+    } finally {
+      e.target.value = "";
     }
+  }
+
+  function moveImage(from: number, dir: -1 | 1) {
+    const to = from + dir;
+    setImages((prev) => {
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      const [m] = next.splice(from, 1);
+      next.splice(to, 0, m!);
+      return next;
+    });
   }
 
   function submit(e: React.FormEvent) {
