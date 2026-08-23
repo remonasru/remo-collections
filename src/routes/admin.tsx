@@ -258,8 +258,18 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
   const [fabric, setFabric] = useState<string>(FABRICS[0]);
   const [images, setImages] = useState<string[]>([]);
 
+  const MAX_IMAGES = 7;
+
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []).slice(0, 5);
+    const picked = Array.from(e.target.files ?? []);
+    const room = MAX_IMAGES - images.length;
+    if (room <= 0) {
+      toast.error(`You can upload up to ${MAX_IMAGES} photos per product`);
+      e.target.value = "";
+      return;
+    }
+    if (picked.length > room) toast.info(`Only ${room} more photo(s) can be added`);
+    const files = picked.slice(0, room);
     const read = (f: File) =>
       new Promise<string>((resolve, reject) => {
         const fr = new FileReader();
@@ -269,10 +279,23 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       });
     try {
       const urls = await Promise.all(files.map(read));
-      setImages((prev) => [...prev, ...urls].slice(0, 5));
+      setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
     } catch {
       toast.error("Could not read the selected images");
+    } finally {
+      e.target.value = "";
     }
+  }
+
+  function moveImage(from: number, dir: -1 | 1) {
+    const to = from + dir;
+    setImages((prev) => {
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      const [m] = next.splice(from, 1);
+      next.splice(to, 0, m!);
+      return next;
+    });
   }
 
   function submit(e: React.FormEvent) {
@@ -410,22 +433,59 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
         </div>
       </L>
 
-      <L label="Product Images (from your gallery)">
-        <input type="file" accept="image/*" multiple onChange={onFiles} className="text-sm" />
+      <L label={`Product Images (1–${MAX_IMAGES} photos from your gallery)`}>
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={onFiles}
+          disabled={images.length >= MAX_IMAGES}
+          className="text-sm"
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          {images.length}/{MAX_IMAGES} selected — the first photo is the cover image.
+        </p>
       </L>
       {images.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-3">
           {images.map((img, i) => (
-            <div key={i} className="relative h-24 w-20 overflow-hidden rounded-md border border-border">
-              <img src={img} alt={`Upload ${i + 1}`} className="h-full w-full object-cover" />
-              <button
-                type="button"
-                aria-label="Remove image"
-                onClick={() => setImages((prev) => prev.filter((_, n) => n !== i))}
-                className="absolute right-0 top-0 bg-destructive px-1 text-xs text-destructive-foreground"
-              >
-                ×
-              </button>
+            <div key={i} className="w-24">
+              <div className="relative h-28 w-24 overflow-hidden rounded-md border border-border">
+                <img src={img} alt={`Upload ${i + 1}`} className="h-full w-full object-cover" />
+                {i === 0 && (
+                  <span className="absolute bottom-0 left-0 bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                    Cover
+                  </span>
+                )}
+                <button
+                  type="button"
+                  aria-label={`Remove image ${i + 1}`}
+                  onClick={() => setImages((prev) => prev.filter((_, n) => n !== i))}
+                  className="absolute right-0 top-0 flex h-6 w-6 items-center justify-center bg-destructive text-destructive-foreground"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+              <div className="mt-1 flex gap-1">
+                <button
+                  type="button"
+                  aria-label={`Move image ${i + 1} left`}
+                  disabled={i === 0}
+                  onClick={() => moveImage(i, -1)}
+                  className="flex h-7 flex-1 items-center justify-center rounded border border-input disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  aria-label={`Move image ${i + 1} right`}
+                  disabled={i === images.length - 1}
+                  onClick={() => moveImage(i, 1)}
+                  className="flex h-7 flex-1 items-center justify-center rounded border border-input disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
