@@ -119,6 +119,10 @@ function seedProducts(): Product[] {
     {
       title: "Classic Cotton Formal Shirt",
       category: "Men" as Category,
+      subCategory: "Shirts (Formal)",
+      colors: ["White", "Blue"],
+      fabric: "Cotton",
+      sizes: [...SIZES] as string[],
       price: 899,
       mrp: 1499,
       description:
@@ -127,6 +131,10 @@ function seedProducts(): Product[] {
     {
       title: "Slim Fit Denim Jeans",
       category: "Men" as Category,
+      subCategory: "Pants / Trousers",
+      colors: ["Blue", "Black"],
+      fabric: "Denim",
+      sizes: [...SIZES] as string[],
       price: 1199,
       mrp: 1999,
       description:
@@ -135,6 +143,10 @@ function seedProducts(): Product[] {
     {
       title: "Rose Pink Designer Kurti",
       category: "Women" as Category,
+      subCategory: "Tops / Tunics",
+      colors: ["Pink"],
+      fabric: "Rayon",
+      sizes: [...SIZES] as string[],
       price: 999,
       mrp: 1799,
       description:
@@ -143,6 +155,10 @@ function seedProducts(): Product[] {
     {
       title: "Floral Printed Maxi Dress",
       category: "Women" as Category,
+      subCategory: "Western Dresses",
+      colors: ["Yellow", "Green"],
+      fabric: "Polyester",
+      sizes: ["S", "M", "L", "Free Size"],
       price: 1349,
       mrp: 2299,
       description:
@@ -151,6 +167,10 @@ function seedProducts(): Product[] {
     {
       title: "Kids Cotton T-Shirt Combo",
       category: "Kids" as Category,
+      subCategory: "Boys T-Shirts",
+      colors: ["Red", "Blue", "Yellow"],
+      fabric: "Cotton",
+      sizes: ["2-3Y", "4-5Y", "6-7Y"],
       price: 649,
       mrp: 1099,
       description:
@@ -159,6 +179,10 @@ function seedProducts(): Product[] {
     {
       title: "Kids Denim Dungaree Set",
       category: "Kids" as Category,
+      subCategory: "Girls Dresses / Frocks",
+      colors: ["Blue"],
+      fabric: "Denim",
+      sizes: ["4-5Y", "6-7Y", "8-9Y"],
       price: 899,
       mrp: 1599,
       description:
@@ -168,13 +192,24 @@ function seedProducts(): Product[] {
   return base.map((b, i) => ({
     ...b,
     id: `seed-${i + 1}`,
-    sizes: [...SIZES],
     images: [],
     inStock: true,
     reviews: [],
     createdAt: Date.now() - i * 1000,
   }));
 }
+
+function normalizeProduct(p: Product): Product {
+  return {
+    ...p,
+    subCategory: p.subCategory ?? SUBCATEGORIES[p.category]?.[0] ?? "",
+    colors: p.colors ?? [],
+    fabric: p.fabric ?? "",
+    sizes: p.sizes ?? [],
+    reviews: p.reviews ?? [],
+  };
+}
+
 
 const initial: StoreState = {
   products: seedProducts(),
