@@ -312,11 +312,15 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       <L label="Product Title">
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
       </L>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <L label="Category">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <L label="Main Category">
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value as Category)}
+            onChange={(e) => {
+              const c = e.target.value as Category;
+              setCategory(c);
+              setSubCategory(SUBCATEGORIES[c][0]!);
+            }}
             className={inputCls}
           >
             {CATEGORIES.map((c) => (
@@ -324,11 +328,31 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
             ))}
           </select>
         </L>
+        <L label="Sub-Category (required)">
+          <select
+            value={subCategory}
+            onChange={(e) => setSubCategory(e.target.value)}
+            className={inputCls}
+          >
+            {SUBCATEGORIES[category].map((s) => (
+              <option key={s}>{s}</option>
+            ))}
+          </select>
+        </L>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
         <L label="Selling Price (₹)">
           <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="numeric" className={inputCls} />
         </L>
         <L label="MRP (₹)">
           <input value={mrp} onChange={(e) => setMrp(e.target.value)} inputMode="numeric" className={inputCls} />
+        </L>
+        <L label="Fabric / Material">
+          <select value={fabric} onChange={(e) => setFabric(e.target.value)} className={inputCls}>
+            {FABRICS.map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </select>
         </L>
       </div>
       <L label="Description">
@@ -341,14 +365,14 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       </L>
       <L label="Available Sizes">
         <div className="flex flex-wrap gap-2">
-          {SIZES.map((s) => (
+          {ALL_SIZES.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() =>
                 setSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))
               }
-              className={`h-10 w-14 rounded-md border text-sm font-semibold ${
+              className={`h-10 min-w-14 rounded-md border px-2 text-sm font-semibold ${
                 sizes.includes(s)
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-input bg-background"
@@ -359,6 +383,29 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
           ))}
         </div>
       </L>
+      <L label="Colours">
+        <div className="flex flex-wrap gap-2">
+          {COLORS.map((c) => (
+            <button
+              key={c.name}
+              type="button"
+              title={c.name}
+              aria-label={c.name}
+              aria-pressed={colors.includes(c.name)}
+              onClick={() =>
+                setColors((prev) =>
+                  prev.includes(c.name) ? prev.filter((x) => x !== c.name) : [...prev, c.name],
+                )
+              }
+              className={`h-9 w-9 rounded-full border-2 ${
+                colors.includes(c.name) ? "border-primary ring-2 ring-primary/40" : "border-border"
+              }`}
+              style={{ backgroundColor: c.hex }}
+            />
+          ))}
+        </div>
+      </L>
+
       <L label="Product Images (from your gallery)">
         <input type="file" accept="image/*" multiple onChange={onFiles} className="text-sm" />
       </L>
