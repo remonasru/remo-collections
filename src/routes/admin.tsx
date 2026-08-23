@@ -453,7 +453,8 @@ function Inventory() {
           <div className="min-w-40 flex-1">
             <p className="font-semibold">{p.title}</p>
             <p className="text-xs text-muted-foreground">
-              {p.category} · {p.sizes.join(", ") || "No sizes"} · {p.reviews.length} reviews
+              {p.category} › {p.subCategory || "No sub-category"} · {p.fabric || "—"} ·{" "}
+              {p.sizes.join(", ") || "No sizes"} · {p.reviews.length} reviews
             </p>
           </div>
           <label className="text-xs font-bold uppercase text-muted-foreground">
