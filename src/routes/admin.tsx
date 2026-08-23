@@ -245,10 +245,13 @@ function Stat({ label, value }: { label: string; value: string }) {
 function AddProductForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("Men");
+  const [subCategory, setSubCategory] = useState(SUBCATEGORIES.Men[0]!);
   const [price, setPrice] = useState("");
   const [mrp, setMrp] = useState("");
   const [description, setDescription] = useState("");
   const [sizes, setSizes] = useState<string[]>([...SIZES]);
+  const [colors, setColors] = useState<string[]>([]);
+  const [fabric, setFabric] = useState<string>(FABRICS[0]);
   const [images, setImages] = useState<string[]>([]);
 
   async function onFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -276,13 +279,20 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       toast.error("Please enter a product title and a valid price");
       return;
     }
+    if (!subCategory) {
+      toast.error("Please select a sub-category");
+      return;
+    }
     addProduct({
       title: title.trim(),
       category,
+      subCategory,
       price: p,
       mrp: m,
       description: description.trim(),
       sizes,
+      colors,
+      fabric,
       images,
       inStock: true,
     });
@@ -291,9 +301,11 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
     setPrice("");
     setMrp("");
     setDescription("");
+    setColors([]);
     setImages([]);
     onDone();
   }
+
 
   return (
     <form onSubmit={submit} className="max-w-2xl space-y-4 rounded-xl border border-border bg-card p-5 shadow-card">
