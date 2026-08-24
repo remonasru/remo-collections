@@ -124,14 +124,17 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { products, orders } = useStore();
   const dirty = useDirty();
   const [tab, setTab] = useState<Tab>("inventory");
+  const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     setStaging(true);
     return () => {
-      discardChanges();
+      void discardChanges();
       setStaging(false);
     };
   }, []);
+
 
   useEffect(() => {
     if (!dirty) return;
@@ -210,8 +213,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
               disabled={!dirty}
               onClick={() => {
                 if (confirm("Discard all unsaved changes?")) {
-                  discardChanges();
-                  toast.success("Changes discarded");
+                  void discardChanges().then(() => toast.success("Changes discarded"));
                 }
               }}
               className="rounded-md border border-input px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
@@ -220,15 +222,21 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             </button>
             <button
               type="button"
-              disabled={!dirty}
+              disabled={!dirty || saving}
               onClick={() => {
-                commitChanges();
-                toast.success("All changes saved");
+                setSaving(true);
+                commitChanges()
+                  .then(() => toast.success("All changes saved successfully!"))
+                  .catch(() =>
+                    toast.error("Could not save — storage is full. Remove a few product photos and try again."),
+                  )
+                  .finally(() => setSaving(false));
               }}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-card disabled:opacity-50"
             >
-              <Save className="h-4 w-4" /> Save Changes
+              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save Changes"}
             </button>
+
           </div>
         </div>
       </div>
