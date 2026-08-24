@@ -124,6 +124,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { products, orders } = useStore();
   const dirty = useDirty();
   const [tab, setTab] = useState<Tab>("inventory");
+  const [saving, setSaving] = useState(false);
+
 
   useEffect(() => {
     setStaging(true);
