@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Star, Truck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ProductImage } from "@/components/ProductCard";
+import { ProductGallery } from "@/components/ProductGallery";
 import {
   addReview,
   addToCart,
@@ -34,7 +34,6 @@ function ProductPage() {
   const navigate = useNavigate();
   const product = products.find((p) => p.id === id);
   const [size, setSize] = useState("");
-  const [activeImg, setActiveImg] = useState(0);
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
   const [text, setText] = useState("");
@@ -90,35 +89,7 @@ function ProductPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <div className="grid gap-8 md:grid-cols-2">
-        <div>
-          <div className="aspect-4/5 overflow-hidden rounded-xl border border-border bg-secondary shadow-card">
-            {product.images[activeImg] ? (
-              <img
-                src={product.images[activeImg]}
-                alt={product.title}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <ProductImage product={product} />
-            )}
-          </div>
-          {product.images.length > 1 && (
-            <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto">
-              {product.images.map((img, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => setActiveImg(i)}
-                  className={`h-20 w-16 shrink-0 overflow-hidden rounded-md border-2 ${
-                    i === activeImg ? "border-primary" : "border-border"
-                  }`}
-                >
-                  <img src={img} alt={`${product.title} view ${i + 1}`} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery product={product} />
 
         <div>
           <p className="text-sm font-semibold uppercase tracking-wide text-accent">{product.category}</p>

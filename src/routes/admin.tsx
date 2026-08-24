@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LogOut, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
@@ -308,6 +308,10 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
     }
     if (!subCategory) {
       toast.error("Please select a sub-category");
+      return;
+    }
+    if (images.length < 1) {
+      toast.error("Please upload at least 1 product photo");
       return;
     }
     addProduct({
