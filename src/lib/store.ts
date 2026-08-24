@@ -222,30 +222,105 @@ let state: StoreState = initial;
 let loaded = false;
 const listeners = new Set<() => void>();
 
+/* ---------- IndexedDB (primary, quota-safe for base64 photos) ---------- */
+const DB_NAME = "remo-collections";
+const DB_STORE = "state";
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      if (!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE);
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbGet(): Promise<Partial<StoreState> | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readonly");
+    const req = tx.objectStore(DB_STORE).get(KEY);
+    req.onsuccess = () => resolve((req.result as Partial<StoreState>) ?? null);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbSet(value: StoreState): Promise<void> {
+  const db = await openDB();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, "readwrite");
+    tx.objectStore(DB_STORE).put(JSON.parse(JSON.stringify(value)) as StoreState, KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+function hydrate(parsed: Partial<StoreState>) {
+  state = {
+    products: (parsed.products ?? state.products).map(normalizeProduct),
+    cart: parsed.cart ?? [],
+    wishlist: parsed.wishlist ?? [],
+    orders: parsed.orders ?? [],
+  };
+}
+
+/** Synchronous first paint from localStorage (legacy/small payloads). */
 function load() {
   if (loaded || typeof window === "undefined") return;
   loaded = true;
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Partial<StoreState>;
-      state = {
-        products: (parsed.products ?? initial.products).map(normalizeProduct),
-        cart: parsed.cart ?? [],
-        wishlist: parsed.wishlist ?? [],
-        orders: parsed.orders ?? [],
-      };
-    }
+    if (raw) hydrate(JSON.parse(raw) as Partial<StoreState>);
   } catch {
     /* ignore corrupt storage */
   }
+  void hydrateFromIdb();
 }
 
-function persist() {
+let hydrating: Promise<void> | null = null;
+function hydrateFromIdb(): Promise<void> {
+  if (typeof window === "undefined" || !("indexedDB" in window)) return Promise.resolve();
+  hydrating ??= (async () => {
+    try {
+      const stored = await idbGet();
+      if (stored) {
+        // Never let seed/dummy data overwrite a saved catalog.
+        if (!dirty) {
+          hydrate(stored);
+          notify();
+        }
+      } else {
+        // First ever run: persist the starter catalog once so it is never regenerated.
+        await idbSet(state);
+      }
+    } catch {
+      /* IndexedDB unavailable — localStorage stays the fallback */
+    }
+  })();
+  return hydrating;
+}
+
+/** Writes to IndexedDB; mirrors to localStorage when it fits. Throws on failure. */
+async function persist(): Promise<void> {
+  if (typeof window === "undefined") return;
+  let idbOk = false;
+  if ("indexedDB" in window) {
+    await idbSet(state);
+    idbOk = true;
+  }
   try {
     window.localStorage.setItem(KEY, JSON.stringify(state));
   } catch {
-    /* quota exceeded */
+    if (!idbOk) throw new Error("Storage quota exceeded");
+    // Large payload lives in IndexedDB; drop the stale localStorage mirror.
+    try {
+      window.localStorage.removeItem(KEY);
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -261,7 +336,7 @@ function setState(updater: (s: StoreState) => StoreState) {
   load();
   state = updater(state);
   if (staging) dirty = true;
-  else persist();
+  else void persist().catch(() => undefined);
   notify();
 }
 
@@ -271,17 +346,21 @@ export function setStaging(on: boolean) {
   notify();
 }
 
-export function commitChanges() {
-  persist();
+export async function commitChanges(): Promise<void> {
+  await persist();
   dirty = false;
   notify();
 }
 
-export function discardChanges() {
-  loaded = false;
-  state = initial;
-  load();
+export async function discardChanges(): Promise<void> {
   dirty = false;
+  hydrating = null;
+  try {
+    const stored = await idbGet();
+    if (stored) hydrate(stored);
+  } catch {
+    /* keep current state */
+  }
   notify();
 }
 
@@ -308,6 +387,7 @@ function getSnapshot() {
 export function useStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
 }
+
 
 
 /* ---------- products ---------- */
