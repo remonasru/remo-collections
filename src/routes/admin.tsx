@@ -128,10 +128,11 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     setStaging(true);
     return () => {
-      discardChanges();
+      void discardChanges();
       setStaging(false);
     };
   }, []);
+
 
   useEffect(() => {
     if (!dirty) return;
