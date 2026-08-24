@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LogOut, Save, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
