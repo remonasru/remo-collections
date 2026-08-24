@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Star, Truck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { ProductImage } from "@/components/ProductCard";
+import { ProductGallery } from "@/components/ProductGallery";
 import {
   addReview,
   addToCart,
@@ -34,7 +34,6 @@ function ProductPage() {
   const navigate = useNavigate();
   const product = products.find((p) => p.id === id);
   const [size, setSize] = useState("");
-  const [activeImg, setActiveImg] = useState(0);
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
   const [text, setText] = useState("");
