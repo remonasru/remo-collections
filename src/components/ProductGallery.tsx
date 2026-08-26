@@ -80,6 +80,7 @@ export function ProductGallery({ product }: Props) {
           className="h-full w-full cursor-zoom-in object-cover transition-transform duration-200"
           style={{ transformOrigin: origin, transform: hoverZoom ? "scale(1.8)" : "scale(1)" }}
           onClick={() => setZoomOpen(true)}
+          onError={() => setBroken((prev) => (prev.includes(current) ? prev : [...prev, current]))}
         />
 
         <button
