@@ -199,14 +199,29 @@ function seedProducts(): Product[] {
   }));
 }
 
-function normalizeProduct(p: Product): Product {
+/** Repairs any product record read from storage so the UI can never hit undefined. */
+function normalizeProduct(raw: unknown): Product {
+  const p = (raw ?? {}) as Partial<Product>;
+  const category: Category = CATEGORIES.includes(p.category as Category)
+    ? (p.category as Category)
+    : "Men";
+  const price = Number(p.price);
+  const mrp = Number(p.mrp);
   return {
-    ...p,
-    subCategory: p.subCategory ?? SUBCATEGORIES[p.category]?.[0] ?? "",
-    colors: p.colors ?? [],
-    fabric: p.fabric ?? "",
-    sizes: p.sizes ?? [],
-    reviews: p.reviews ?? [],
+    id: typeof p.id === "string" && p.id ? p.id : uid(),
+    title: typeof p.title === "string" && p.title.trim() ? p.title : "Untitled product",
+    category,
+    subCategory: p.subCategory ?? SUBCATEGORIES[category]?.[0] ?? "",
+    price: Number.isFinite(price) && price > 0 ? price : 0,
+    mrp: Number.isFinite(mrp) && mrp > 0 ? mrp : Number.isFinite(price) ? price : 0,
+    description: typeof p.description === "string" ? p.description : "",
+    sizes: Array.isArray(p.sizes) ? p.sizes.filter((s) => typeof s === "string") : [],
+    colors: Array.isArray(p.colors) ? p.colors.filter((c) => typeof c === "string") : [],
+    fabric: typeof p.fabric === "string" ? p.fabric : "",
+    images: Array.isArray(p.images) ? p.images.filter((i) => typeof i === "string" && i) : [],
+    inStock: p.inStock !== false,
+    reviews: Array.isArray(p.reviews) ? p.reviews : [],
+    createdAt: Number.isFinite(Number(p.createdAt)) ? Number(p.createdAt) : Date.now(),
   };
 }
 
@@ -228,7 +243,14 @@ const DB_STORE = "state";
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    let req: IDBOpenDBRequest;
+    try {
+      req = indexedDB.open(DB_NAME, 1);
+    } catch (err) {
+      reject(err instanceof Error ? err : new Error("IndexedDB unavailable"));
+      return;
+    }
+    req.onblocked = () => reject(new Error("IndexedDB is blocked by another tab"));
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE);
     };
@@ -259,11 +281,12 @@ async function idbSet(value: StoreState): Promise<void> {
 }
 
 function hydrate(parsed: Partial<StoreState>) {
+  const products = Array.isArray(parsed.products) ? parsed.products : state.products;
   state = {
-    products: (parsed.products ?? state.products).map(normalizeProduct),
-    cart: parsed.cart ?? [],
-    wishlist: parsed.wishlist ?? [],
-    orders: parsed.orders ?? [],
+    products: products.map(normalizeProduct),
+    cart: Array.isArray(parsed.cart) ? parsed.cart.filter((c) => c && c.productId) : [],
+    wishlist: Array.isArray(parsed.wishlist) ? parsed.wishlist.filter((w) => typeof w === "string") : [],
+    orders: Array.isArray(parsed.orders) ? parsed.orders.filter((o) => o && o.id) : [],
   };
 }
 
@@ -310,6 +333,11 @@ async function persist(): Promise<void> {
   if ("indexedDB" in window) {
     await idbSet(state);
     idbOk = true;
+  }
+  if (!idbOk) {
+    // No IndexedDB: localStorage is the only store, so a quota error must surface.
+    window.localStorage.setItem(KEY, JSON.stringify(state));
+    return;
   }
   try {
     window.localStorage.setItem(KEY, JSON.stringify(state));
