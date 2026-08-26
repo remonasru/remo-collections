@@ -6,7 +6,10 @@ import type { Product } from "@/lib/store";
 type Props = { product: Product };
 
 export function ProductGallery({ product }: Props) {
-  const images = product.images ?? [];
+  const [broken, setBroken] = useState<string[]>([]);
+  // Any photo that fails to decode is dropped from the carousel entirely, so the
+  // arrows, dots and thumbnails always match what is actually viewable.
+  const images = (product.images ?? []).filter((src) => src && !broken.includes(src));
   const count = images.length;
   const [index, setIndex] = useState(0);
   const [zoomOpen, setZoomOpen] = useState(false);
@@ -46,6 +49,7 @@ export function ProductGallery({ product }: Props) {
 
   const current = images[Math.min(index, count - 1)]!;
 
+
   return (
     <div>
       <div
@@ -76,6 +80,7 @@ export function ProductGallery({ product }: Props) {
           className="h-full w-full cursor-zoom-in object-cover transition-transform duration-200"
           style={{ transformOrigin: origin, transform: hoverZoom ? "scale(1.8)" : "scale(1)" }}
           onClick={() => setZoomOpen(true)}
+          onError={() => setBroken((prev) => (prev.includes(current) ? prev : [...prev, current]))}
         />
 
         <button

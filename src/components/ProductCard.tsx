@@ -1,14 +1,23 @@
 import { Link } from "@tanstack/react-router";
 import { Heart, Star } from "lucide-react";
+import { useEffect, useState } from "react";
 import { avgRating, discountPct, inr, toggleWishlist, useStore, type Product } from "@/lib/store";
 
 export function ProductImage({ product, className }: { product: Product; className?: string }) {
-  if (product.images[0]) {
+  const src = product.images?.[0];
+  const [broken, setBroken] = useState(false);
+
+  // A newly saved photo replaces a previously broken one — retry rendering it.
+  useEffect(() => setBroken(false), [src]);
+
+  if (src && !broken) {
     return (
       <img
-        src={product.images[0]}
+        src={src}
         alt={product.title}
         loading="lazy"
+        decoding="async"
+        onError={() => setBroken(true)}
         className={className ?? "h-full w-full object-cover"}
       />
     );
@@ -23,6 +32,7 @@ export function ProductImage({ product, className }: { product: Product; classNa
     </div>
   );
 }
+
 
 export function ProductCard({ product }: { product: Product }) {
   const { wishlist } = useStore();
