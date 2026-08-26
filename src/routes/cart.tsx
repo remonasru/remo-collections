@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Minus, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
 import {
@@ -16,14 +16,21 @@ import {
   WHATSAPP_NUMBER,
 } from "@/lib/store";
 
-function openUrl(url: string) {
-  const a = document.createElement("a");
-  a.href = url;
-  a.target = "_blank";
-  a.rel = "noopener noreferrer";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+function openUrl(url: string, sameTab = false) {
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    if (!sameTab) {
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+    }
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 
@@ -45,6 +52,10 @@ function CartPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", phone: "", payment: "COD" as "COD" | "UPI" });
   const [done, setDone] = useState<{ wa: string; upi: string | null } | null>(null);
+  const waTimerRef = useRef<number | undefined>(undefined);
+
+  // Clear any pending WhatsApp hand-off so a page change can't fire it after unmount.
+  useEffect(() => () => window.clearTimeout(waTimerRef.current), []);
 
   const rows = cart
     .map((c) => ({ item: c, product: products.find((p) => p.id === c.productId) }))
@@ -78,13 +89,16 @@ function CartPage() {
     const upi = isUpi ? buildUpiUrl(order.total, order.id) : null;
     const wa = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(buildWhatsAppMessage(order))}`;
 
-    // Trigger synchronously via a real link click (popup blockers swallow window.open)
+    // Trigger synchronously via a real link click (popup blockers swallow window.open).
+    // The UPI intent must open in the same tab so the installed payment app takes over.
+    let waTimer: number | undefined;
     if (upi) {
-      window.location.href = upi;
-      setTimeout(() => openUrl(wa), 1200);
+      openUrl(upi, true);
+      waTimer = window.setTimeout(() => openUrl(wa), 1200);
     } else {
       openUrl(wa);
     }
+    waTimerRef.current = waTimer;
 
     setDone({ wa, upi });
     clearCart();
