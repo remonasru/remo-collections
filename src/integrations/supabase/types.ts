@@ -14,7 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          created_at: string
+          customer: Json
+          id: string
+          items: Json
+          status: string
+          total: number
+        }
+        Insert: {
+          created_at?: string
+          customer: Json
+          id?: string
+          items: Json
+          status?: string
+          total?: number
+        }
+        Update: {
+          created_at?: string
+          customer?: Json
+          id?: string
+          items?: Json
+          status?: string
+          total?: number
+        }
+        Relationships: []
+      }
+      products: {
+        Row: {
+          category: string
+          colors: string[]
+          created_at: string
+          description: string
+          fabric: string
+          id: string
+          images: string[]
+          in_stock: boolean
+          mrp: number
+          price: number
+          sizes: string[]
+          sub_category: string
+          title: string
+        }
+        Insert: {
+          category: string
+          colors?: string[]
+          created_at?: string
+          description?: string
+          fabric?: string
+          id?: string
+          images?: string[]
+          in_stock?: boolean
+          mrp?: number
+          price?: number
+          sizes?: string[]
+          sub_category?: string
+          title: string
+        }
+        Update: {
+          category?: string
+          colors?: string[]
+          created_at?: string
+          description?: string
+          fabric?: string
+          id?: string
+          images?: string[]
+          in_stock?: boolean
+          mrp?: number
+          price?: number
+          sizes?: string[]
+          sub_category?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          product_id: string
+          rating: number
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          product_id: string
+          rating?: number
+          text?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          product_id?: string
+          rating?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
