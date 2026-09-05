@@ -1,4 +1,12 @@
 import { useSyncExternalStore } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  adminLogin,
+  listOrders,
+  saveCatalog,
+  updateOrderStatus,
+  type ProductInput,
+} from "@/lib/catalog.functions";
 
 export type Category = "Men" | "Women" | "Kids";
 export const CATEGORIES: Category[] = ["Men", "Women", "Kids"];
@@ -82,7 +90,6 @@ export type Product = {
   createdAt: number;
 };
 
-
 export type CartItem = {
   id: string;
   productId: string;
@@ -106,298 +113,174 @@ export type StoreState = {
   cart: CartItem[];
   wishlist: string[];
   orders: Order[];
+  loading: boolean;
 };
-
-const KEY = "remo-collections-v1";
 
 export const WHATSAPP_NUMBER = "918903206428";
 
-const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const LOCAL_KEY = "remo-basket-v1";
 
-function seedProducts(): Product[] {
-  const base = [
-    {
-      title: "Classic Cotton Formal Shirt",
-      category: "Men" as Category,
-      subCategory: "Shirts (Formal)",
-      colors: ["White", "Blue"],
-      fabric: "Cotton",
-      sizes: [...SIZES] as string[],
-      price: 899,
-      mrp: 1499,
-      description:
-        "Premium breathable cotton formal shirt with a tailored fit. Perfect for office wear and occasions. Machine washable, colour-fast fabric.",
-    },
-    {
-      title: "Slim Fit Denim Jeans",
-      category: "Men" as Category,
-      subCategory: "Pants / Trousers",
-      colors: ["Blue", "Black"],
-      fabric: "Denim",
-      sizes: [...SIZES] as string[],
-      price: 1199,
-      mrp: 1999,
-      description:
-        "Stretchable slim-fit denim with reinforced stitching and five-pocket styling. All-day comfort with a sharp silhouette.",
-    },
-    {
-      title: "Rose Pink Designer Kurti",
-      category: "Women" as Category,
-      subCategory: "Tops / Tunics",
-      colors: ["Pink"],
-      fabric: "Rayon",
-      sizes: [...SIZES] as string[],
-      price: 999,
-      mrp: 1799,
-      description:
-        "Soft rayon kurti with delicate thread work and a flattering A-line cut. Light, airy and made for everyday elegance.",
-    },
-    {
-      title: "Floral Printed Maxi Dress",
-      category: "Women" as Category,
-      subCategory: "Western Dresses",
-      colors: ["Yellow", "Green"],
-      fabric: "Polyester",
-      sizes: ["S", "M", "L", "Free Size"],
-      price: 1349,
-      mrp: 2299,
-      description:
-        "Flowy georgette maxi dress with an all-over floral print, elasticated waist and full-length flare.",
-    },
-    {
-      title: "Kids Cotton T-Shirt Combo",
-      category: "Kids" as Category,
-      subCategory: "Boys T-Shirts",
-      colors: ["Red", "Blue", "Yellow"],
-      fabric: "Cotton",
-      sizes: ["2-3Y", "4-5Y", "6-7Y"],
-      price: 649,
-      mrp: 1099,
-      description:
-        "Pack of soft skin-friendly cotton t-shirts in bright colours. Durable stitching that survives playtime and washes.",
-    },
-    {
-      title: "Kids Denim Dungaree Set",
-      category: "Kids" as Category,
-      subCategory: "Girls Dresses / Frocks",
-      colors: ["Blue"],
-      fabric: "Denim",
-      sizes: ["4-5Y", "6-7Y", "8-9Y"],
-      price: 899,
-      mrp: 1599,
-      description:
-        "Adorable denim dungaree with adjustable straps and a matching inner tee. Comfortable fit for active kids.",
-    },
-  ];
-  return base.map((b, i) => ({
-    ...b,
-    id: `seed-${i + 1}`,
-    images: [],
-    inStock: true,
-    reviews: [],
-    createdAt: Date.now() - i * 1000,
-  }));
-}
+const uid = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 
-/** Repairs any product record read from storage so the UI can never hit undefined. */
-function normalizeProduct(raw: unknown): Product {
-  const p = (raw ?? {}) as Partial<Product>;
-  const category: Category = CATEGORIES.includes(p.category as Category)
-    ? (p.category as Category)
+/* ---------- normalization ---------- */
+type ProductRow = {
+  id: string;
+  title: string;
+  category: string;
+  sub_category: string;
+  price: number | string;
+  mrp: number | string;
+  description: string;
+  sizes: string[] | null;
+  colors: string[] | null;
+  fabric: string | null;
+  images: string[] | null;
+  in_stock: boolean | null;
+  created_at: string;
+};
+
+type ReviewRow = {
+  id: string;
+  product_id: string;
+  name: string;
+  rating: number;
+  text: string;
+  created_at: string;
+};
+
+function toProduct(row: ProductRow, reviews: Review[]): Product {
+  const category: Category = CATEGORIES.includes(row.category as Category)
+    ? (row.category as Category)
     : "Men";
-  const price = Number(p.price);
-  const mrp = Number(p.mrp);
+  const price = Number(row.price) || 0;
+  const mrp = Number(row.mrp) || price;
   return {
-    id: typeof p.id === "string" && p.id ? p.id : uid(),
-    title: typeof p.title === "string" && p.title.trim() ? p.title : "Untitled product",
+    id: row.id,
+    title: row.title || "Untitled product",
     category,
-    subCategory: p.subCategory ?? SUBCATEGORIES[category]?.[0] ?? "",
-    price: Number.isFinite(price) && price > 0 ? price : 0,
-    mrp: Number.isFinite(mrp) && mrp > 0 ? mrp : Number.isFinite(price) ? price : 0,
-    description: typeof p.description === "string" ? p.description : "",
-    sizes: Array.isArray(p.sizes) ? p.sizes.filter((s) => typeof s === "string") : [],
-    colors: Array.isArray(p.colors) ? p.colors.filter((c) => typeof c === "string") : [],
-    fabric: typeof p.fabric === "string" ? p.fabric : "",
-    images: Array.isArray(p.images) ? p.images.filter((i) => typeof i === "string" && i) : [],
-    inStock: p.inStock !== false,
-    reviews: Array.isArray(p.reviews) ? p.reviews : [],
-    createdAt: Number.isFinite(Number(p.createdAt)) ? Number(p.createdAt) : Date.now(),
+    subCategory: row.sub_category || SUBCATEGORIES[category][0] || "",
+    price,
+    mrp,
+    description: row.description ?? "",
+    sizes: (row.sizes ?? []).filter((s) => typeof s === "string"),
+    colors: (row.colors ?? []).filter((c) => typeof c === "string"),
+    fabric: row.fabric ?? "",
+    images: (row.images ?? []).filter((i) => typeof i === "string" && i),
+    inStock: row.in_stock !== false,
+    reviews,
+    createdAt: new Date(row.created_at).getTime() || Date.now(),
   };
 }
 
-
+/* ---------- state ---------- */
 const initial: StoreState = {
-  products: seedProducts(),
+  products: [],
   cart: [],
   wishlist: [],
   orders: [],
+  loading: true,
 };
 
 let state: StoreState = initial;
 let loaded = false;
 const listeners = new Set<() => void>();
 
-/* ---------- IndexedDB (primary, quota-safe for base64 photos) ---------- */
-const DB_NAME = "remo-collections";
-const DB_STORE = "state";
-
-function openDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    let req: IDBOpenDBRequest;
-    try {
-      req = indexedDB.open(DB_NAME, 1);
-    } catch (err) {
-      reject(err instanceof Error ? err : new Error("IndexedDB unavailable"));
-      return;
-    }
-    req.onblocked = () => reject(new Error("IndexedDB is blocked by another tab"));
-    req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains(DB_STORE)) req.result.createObjectStore(DB_STORE);
-    };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function idbGet(): Promise<Partial<StoreState> | null> {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, "readonly");
-    const req = tx.objectStore(DB_STORE).get(KEY);
-    req.onsuccess = () => resolve((req.result as Partial<StoreState>) ?? null);
-    req.onerror = () => reject(req.error);
-  });
-}
-
-async function idbSet(value: StoreState): Promise<void> {
-  const db = await openDB();
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, "readwrite");
-    tx.objectStore(DB_STORE).put(JSON.parse(JSON.stringify(value)) as StoreState, KEY);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-    tx.onabort = () => reject(tx.error);
-  });
-}
-
-function hydrate(parsed: Partial<StoreState>) {
-  const products = Array.isArray(parsed.products) ? parsed.products : state.products;
-  state = {
-    products: products.map(normalizeProduct),
-    cart: Array.isArray(parsed.cart) ? parsed.cart.filter((c) => c && c.productId) : [],
-    wishlist: Array.isArray(parsed.wishlist) ? parsed.wishlist.filter((w) => typeof w === "string") : [],
-    orders: Array.isArray(parsed.orders) ? parsed.orders.filter((o) => o && o.id) : [],
-  };
-}
-
-/** Synchronous first paint from localStorage (legacy/small payloads). */
-function load() {
-  if (loaded || typeof window === "undefined") return;
-  loaded = true;
-  try {
-    const raw = window.localStorage.getItem(KEY);
-    if (raw) hydrate(JSON.parse(raw) as Partial<StoreState>);
-  } catch {
-    /* ignore corrupt storage */
-  }
-  void hydrateFromIdb();
-}
-
-let hydrating: Promise<void> | null = null;
-function hydrateFromIdb(): Promise<void> {
-  if (typeof window === "undefined" || !("indexedDB" in window)) return Promise.resolve();
-  hydrating ??= (async () => {
-    try {
-      const stored = await idbGet();
-      if (stored) {
-        // Never let seed/dummy data overwrite a saved catalog.
-        if (!dirty) {
-          hydrate(stored);
-          notify();
-        }
-      } else {
-        // First ever run: persist the starter catalog once so it is never regenerated.
-        await idbSet(state);
-      }
-    } catch {
-      /* IndexedDB unavailable — localStorage stays the fallback */
-    }
-  })();
-  return hydrating;
-}
-
-/** Writes to IndexedDB; mirrors to localStorage when it fits. Throws on failure. */
-async function persist(): Promise<void> {
-  if (typeof window === "undefined") return;
-  let idbOk = false;
-  if ("indexedDB" in window) {
-    await idbSet(state);
-    idbOk = true;
-  }
-  if (!idbOk) {
-    // No IndexedDB: localStorage is the only store, so a quota error must surface.
-    window.localStorage.setItem(KEY, JSON.stringify(state));
-    return;
-  }
-  try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
-  } catch {
-    if (!idbOk) throw new Error("Storage quota exceeded");
-    // Large payload lives in IndexedDB; drop the stale localStorage mirror.
-    try {
-      window.localStorage.removeItem(KEY);
-    } catch {
-      /* noop */
-    }
-  }
-}
-
-/* ---------- staged (draft) mode for the admin panel ---------- */
-let staging = false;
-let dirty = false;
-
 function notify() {
   listeners.forEach((l) => l());
 }
 
 function setState(updater: (s: StoreState) => StoreState) {
-  load();
   state = updater(state);
-  if (staging) dirty = true;
-  else void persist().catch(() => undefined);
   notify();
 }
 
-export function setStaging(on: boolean) {
-  staging = on;
-  if (!on) dirty = false;
-  notify();
-}
-
-export async function commitChanges(): Promise<void> {
-  await persist();
-  dirty = false;
-  notify();
-}
-
-export async function discardChanges(): Promise<void> {
-  dirty = false;
-  hydrating = null;
+/* ---------- basket (device-local by design) ---------- */
+function loadBasket() {
+  if (typeof window === "undefined") return;
   try {
-    const stored = await idbGet();
-    if (stored) hydrate(stored);
+    const raw = window.localStorage.getItem(LOCAL_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Partial<StoreState>;
+    state = {
+      ...state,
+      cart: Array.isArray(parsed.cart) ? parsed.cart.filter((c) => c && c.productId) : [],
+      wishlist: Array.isArray(parsed.wishlist)
+        ? parsed.wishlist.filter((w) => typeof w === "string")
+        : [],
+    };
   } catch {
-    /* keep current state */
+    /* ignore corrupt storage */
   }
-  notify();
 }
 
-export function useDirty(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    () => dirty,
-    () => false,
-  );
+function persistBasket() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      LOCAL_KEY,
+      JSON.stringify({ cart: state.cart, wishlist: state.wishlist }),
+    );
+  } catch {
+    /* quota — basket is non-critical */
+  }
+}
+
+function setBasket(updater: (s: StoreState) => StoreState) {
+  setState(updater);
+  persistBasket();
+}
+
+/* ---------- catalog from the shared database ---------- */
+let fetching: Promise<void> | null = null;
+
+export function refreshCatalog(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  fetching ??= (async () => {
+    try {
+      const [{ data: prodRows, error: pErr }, { data: revRows }] = await Promise.all([
+        supabase.from("products").select("*").order("created_at", { ascending: false }),
+        supabase.from("reviews").select("*").order("created_at", { ascending: false }),
+      ]);
+      if (pErr) throw new Error(pErr.message);
+      const byProduct = new Map<string, Review[]>();
+      for (const r of (revRows ?? []) as ReviewRow[]) {
+        const list = byProduct.get(r.product_id) ?? [];
+        list.push({
+          id: r.id,
+          name: r.name,
+          rating: Number(r.rating) || 5,
+          text: r.text ?? "",
+          createdAt: new Date(r.created_at).getTime() || Date.now(),
+        });
+        byProduct.set(r.product_id, list);
+      }
+      const products = ((prodRows ?? []) as ProductRow[]).map((row) =>
+        toProduct(row, byProduct.get(row.id) ?? []),
+      );
+      // Never clobber unsaved admin edits.
+      if (!dirty) setState((s) => ({ ...s, products, loading: false }));
+      else setState((s) => ({ ...s, loading: false }));
+    } catch {
+      setState((s) => ({ ...s, loading: false }));
+    } finally {
+      fetching = null;
+    }
+  })();
+  return fetching;
+}
+
+function load() {
+  if (loaded || typeof window === "undefined") return;
+  loaded = true;
+  loadBasket();
+  void refreshCatalog();
+  window.addEventListener("focus", () => void refreshCatalog());
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void refreshCatalog();
+  });
 }
 
 function subscribe(cb: () => void) {
@@ -416,46 +299,124 @@ export function useStore(): StoreState {
   return useSyncExternalStore(subscribe, getSnapshot, () => serverSnapshot);
 }
 
+/* ---------- admin session ---------- */
+let adminPass = "";
 
+export function setAdminPass(pass: string) {
+  adminPass = pass;
+}
+
+export async function verifyAdminLogin(user: string, pass: string): Promise<boolean> {
+  const res = await adminLogin({ data: { user, pass } });
+  if (res.ok) adminPass = pass;
+  return res.ok;
+}
+
+/* ---------- staged (draft) admin mode ---------- */
+let staging = false;
+let dirty = false;
+
+export function setStaging(on: boolean) {
+  staging = on;
+  if (!on) dirty = false;
+  notify();
+}
+
+function stage(updater: (s: StoreState) => StoreState) {
+  setState(updater);
+  if (staging) {
+    dirty = true;
+    notify();
+  } else {
+    void commitChanges().catch(() => undefined);
+  }
+}
+
+export async function commitChanges(): Promise<void> {
+  const products: ProductInput[] = state.products.map((p) => ({
+    id: p.id,
+    title: p.title,
+    category: p.category,
+    subCategory: p.subCategory,
+    price: p.price,
+    mrp: p.mrp,
+    description: p.description,
+    sizes: p.sizes,
+    colors: p.colors,
+    fabric: p.fabric,
+    images: p.images,
+    inStock: p.inStock,
+    createdAt: p.createdAt,
+  }));
+  await saveCatalog({ data: { pass: adminPass, products } });
+  dirty = false;
+  notify();
+  await refreshCatalog();
+}
+
+export async function discardChanges(): Promise<void> {
+  dirty = false;
+  await refreshCatalog();
+  notify();
+}
+
+export function useDirty(): boolean {
+  return useSyncExternalStore(
+    subscribe,
+    () => dirty,
+    () => false,
+  );
+}
 
 /* ---------- products ---------- */
 export function addProduct(p: Omit<Product, "id" | "reviews" | "createdAt">) {
-  setState((s) => ({
+  stage((s) => ({
     ...s,
     products: [{ ...p, id: uid(), reviews: [], createdAt: Date.now() }, ...s.products],
   }));
 }
 
 export function updateProduct(id: string, patch: Partial<Product>) {
-  setState((s) => ({
+  stage((s) => ({
     ...s,
     products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)),
   }));
 }
 
 export function deleteProduct(id: string) {
-  setState((s) => ({
+  stage((s) => ({
     ...s,
     products: s.products.filter((p) => p.id !== id),
+  }));
+  setBasket((s) => ({
+    ...s,
     cart: s.cart.filter((c) => c.productId !== id),
     wishlist: s.wishlist.filter((w) => w !== id),
   }));
 }
 
 export function addReview(productId: string, review: Omit<Review, "id" | "createdAt">) {
+  const optimistic: Review = { ...review, id: uid(), createdAt: Date.now() };
   setState((s) => ({
     ...s,
     products: s.products.map((p) =>
-      p.id === productId
-        ? { ...p, reviews: [{ ...review, id: uid(), createdAt: Date.now() }, ...p.reviews] }
-        : p,
+      p.id === productId ? { ...p, reviews: [optimistic, ...p.reviews] } : p,
     ),
   }));
+  void supabase
+    .from("reviews")
+    .insert({
+      product_id: productId,
+      name: review.name,
+      rating: review.rating,
+      text: review.text,
+    })
+    .then(() => refreshCatalog());
 }
 
 /* ---------- cart ---------- */
 export function addToCart(productId: string, size: string, qty = 1) {
-  setState((s) => {
+  setBasket((s) => {
     const existing = s.cart.find((c) => c.productId === productId && c.size === size);
     if (existing) {
       return {
@@ -468,23 +429,24 @@ export function addToCart(productId: string, size: string, qty = 1) {
 }
 
 export function setCartQty(id: string, qty: number) {
-  setState((s) => ({
+  setBasket((s) => ({
     ...s,
-    cart: qty <= 0 ? s.cart.filter((c) => c.id !== id) : s.cart.map((c) => (c.id === id ? { ...c, qty } : c)),
+    cart:
+      qty <= 0 ? s.cart.filter((c) => c.id !== id) : s.cart.map((c) => (c.id === id ? { ...c, qty } : c)),
   }));
 }
 
 export function removeFromCart(id: string) {
-  setState((s) => ({ ...s, cart: s.cart.filter((c) => c.id !== id) }));
+  setBasket((s) => ({ ...s, cart: s.cart.filter((c) => c.id !== id) }));
 }
 
 export function clearCart() {
-  setState((s) => ({ ...s, cart: [] }));
+  setBasket((s) => ({ ...s, cart: [] }));
 }
 
 /* ---------- wishlist ---------- */
 export function toggleWishlist(productId: string) {
-  setState((s) => ({
+  setBasket((s) => ({
     ...s,
     wishlist: s.wishlist.includes(productId)
       ? s.wishlist.filter((w) => w !== productId)
@@ -495,8 +457,43 @@ export function toggleWishlist(productId: string) {
 /* ---------- orders ---------- */
 export function placeOrder(order: Omit<Order, "id" | "createdAt" | "status">): Order {
   const full: Order = { ...order, id: uid(), createdAt: Date.now(), status: "Pending" };
-  setState((s) => ({ ...s, orders: [full, ...s.orders] }));
+  void supabase
+    .from("orders")
+    .insert({
+      id: full.id,
+      customer: full.customer,
+      items: full.items,
+      total: full.total,
+      status: full.status,
+    })
+    .then(() => undefined);
   return full;
+}
+
+export async function loadOrders(): Promise<void> {
+  try {
+    const rows = await listOrders({ data: { pass: adminPass } });
+    const orders: Order[] = (rows as unknown as {
+      id: string;
+      customer: Order["customer"];
+      items: Order["items"];
+      total: number | string;
+      status: string;
+      created_at: string;
+    }[]).map((o) => ({
+      id: o.id,
+      customer: o.customer,
+      items: Array.isArray(o.items) ? o.items : [],
+      total: Number(o.total) || 0,
+      status: (["Pending", "Shipped", "Delivered"].includes(o.status)
+        ? o.status
+        : "Pending") as OrderStatus,
+      createdAt: new Date(o.created_at).getTime() || Date.now(),
+    }));
+    setState((s) => ({ ...s, orders }));
+  } catch {
+    /* keep whatever is on screen */
+  }
 }
 
 export function setOrderStatus(id: string, status: OrderStatus) {
@@ -504,6 +501,7 @@ export function setOrderStatus(id: string, status: OrderStatus) {
     ...s,
     orders: s.orders.map((o) => (o.id === id ? { ...o, status } : o)),
   }));
+  void updateOrderStatus({ data: { pass: adminPass, id, status } }).catch(() => undefined);
 }
 
 /* ---------- helpers ---------- */

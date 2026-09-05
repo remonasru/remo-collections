@@ -46,7 +46,11 @@ function AdminPage() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setAuthed(sessionStorage.getItem(SESSION_KEY) === "granted");
+    const saved = sessionStorage.getItem(SESSION_KEY);
+    if (saved) {
+      setAdminPass(saved);
+      setAuthed(true);
+    }
     setReady(true);
   }, []);
 
@@ -57,6 +61,7 @@ function AdminPage() {
     <Dashboard
       onLogout={() => {
         sessionStorage.removeItem(SESSION_KEY);
+        setAdminPass("");
         setAuthed(false);
       }}
     />
@@ -67,17 +72,28 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
+  const [checking, setChecking] = useState(false);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (user.trim() === ADMIN_USER && pass === ADMIN_PASS) {
-      sessionStorage.setItem(SESSION_KEY, "granted");
-      setError("");
-      onSuccess();
-    } else {
-      setError("Invalid Credentials");
-      toast.error("Invalid Credentials");
+    setChecking(true);
+    try {
+      const ok = await verifyAdminLogin(user, pass);
+      if (ok) {
+        sessionStorage.setItem(SESSION_KEY, pass);
+        setError("");
+        onSuccess();
+      } else {
+        setError("Invalid Credentials");
+        toast.error("Invalid Credentials");
+      }
+    } catch {
+      setError("Could not reach the server. Please try again.");
+      toast.error("Could not reach the server");
+    } finally {
+      setChecking(false);
     }
+
   }
 
   return (
@@ -129,11 +145,13 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     setStaging(true);
+    void loadOrders();
     return () => {
       void discardChanges();
       setStaging(false);
     };
   }, []);
+
 
 
   useEffect(() => {
@@ -281,10 +299,34 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
     const read = (f: File) =>
       new Promise<string>((resolve, reject) => {
         const fr = new FileReader();
-        fr.onload = () => resolve(String(fr.result));
+        fr.onload = () => {
+          const src = String(fr.result);
+          const img = new Image();
+          img.onload = () => {
+            const max = 1200;
+            const scale = Math.min(1, max / Math.max(img.width, img.height));
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.round(img.width * scale);
+            canvas.height = Math.round(img.height * scale);
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+              resolve(src);
+              return;
+            }
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            try {
+              resolve(canvas.toDataURL("image/jpeg", 0.82));
+            } catch {
+              resolve(src);
+            }
+          };
+          img.onerror = () => resolve(src);
+          img.src = src;
+        };
         fr.onerror = reject;
         fr.readAsDataURL(f);
       });
+
     try {
       const urls = await Promise.all(files.map(read));
       setImages((prev) => [...prev, ...urls].slice(0, MAX_IMAGES));
