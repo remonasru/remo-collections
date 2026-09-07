@@ -13,6 +13,8 @@ import {
   deleteProduct,
   FABRICS,
   inr,
+  loadOrders,
+  setAdminPass,
   setOrderStatus,
   setStaging,
   SIZES,
@@ -20,13 +22,13 @@ import {
   updateProduct,
   useDirty,
   useStore,
+  verifyAdminLogin,
   type Category,
   type OrderStatus,
 } from "@/lib/store";
 
-const ADMIN_USER = "Remo Collections";
-const ADMIN_PASS = "RemoNasru20";
 const SESSION_KEY = "remo-admin-session";
+
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
