@@ -11,6 +11,8 @@ export type ProductInput = {
   sizes: string[];
   colors: string[];
   fabric: string;
+  recipient: string;
+  occasion: string;
   images: string[];
   inStock: boolean;
   createdAt: number;
@@ -45,6 +47,8 @@ export const saveCatalog = createServerFn({ method: "POST" })
       sizes: p.sizes ?? [],
       colors: p.colors ?? [],
       fabric: p.fabric ?? "",
+      recipient: p.recipient ?? "",
+      occasion: p.occasion ?? "",
       images: p.images ?? [],
       in_stock: p.inStock !== false,
       created_at: new Date(Number(p.createdAt) || Date.now()).toISOString(),

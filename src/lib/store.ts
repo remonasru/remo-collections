@@ -123,6 +123,8 @@ export type Product = {
   sizes: string[];
   colors: string[];
   fabric: string;
+  recipient: string;
+  occasion: string;
   images: string[];
   inStock: boolean;
   reviews: Review[];
@@ -176,6 +178,8 @@ type ProductRow = {
   sizes: string[] | null;
   colors: string[] | null;
   fabric: string | null;
+  recipient: string | null;
+  occasion: string | null;
   images: string[] | null;
   in_stock: boolean | null;
   created_at: string;
@@ -207,6 +211,8 @@ function toProduct(row: ProductRow, reviews: Review[]): Product {
     sizes: (row.sizes ?? []).filter((s) => typeof s === "string"),
     colors: (row.colors ?? []).filter((c) => typeof c === "string"),
     fabric: row.fabric ?? "",
+    recipient: row.recipient ?? "",
+    occasion: row.occasion ?? "",
     images: (row.images ?? []).filter((i) => typeof i === "string" && i),
     inStock: row.in_stock !== false,
     reviews,
@@ -383,6 +389,8 @@ export async function commitChanges(): Promise<void> {
     sizes: p.sizes,
     colors: p.colors,
     fabric: p.fabric,
+    recipient: p.recipient,
+    occasion: p.occasion,
     images: p.images,
     inStock: p.inStock,
     createdAt: p.createdAt,
