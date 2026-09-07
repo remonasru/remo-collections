@@ -13,6 +13,8 @@ import {
   deleteProduct,
   FABRICS,
   inr,
+  loadOrders,
+  setAdminPass,
   setOrderStatus,
   setStaging,
   SIZES,
@@ -20,13 +22,13 @@ import {
   updateProduct,
   useDirty,
   useStore,
+  verifyAdminLogin,
   type Category,
   type OrderStatus,
 } from "@/lib/store";
 
-const ADMIN_USER = "Remo Collections";
-const ADMIN_PASS = "RemoNasru20";
 const SESSION_KEY = "remo-admin-session";
+
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -125,10 +127,12 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
         )}
         <button
           type="submit"
-          className="mt-5 w-full rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
+          disabled={checking}
+          className="mt-5 w-full rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
         >
-          Login
+          {checking ? "Checking…" : "Login"}
         </button>
+
       </form>
     </div>
   );
@@ -246,7 +250,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 commitChanges()
                   .then(() => toast.success("All changes saved successfully!"))
                   .catch(() =>
-                    toast.error("Could not save — storage is full. Remove a few product photos and try again."),
+                    toast.error("Could not save — please check your connection and try again."),
                   )
                   .finally(() => setSaving(false));
               }}
