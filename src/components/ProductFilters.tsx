@@ -1,9 +1,12 @@
 import { SlidersHorizontal, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
+  ACCESSORY_GROUPS,
   ALL_SIZES,
   COLORS,
   FABRICS,
+  OCCASIONS,
+  RECIPIENTS,
   SUBCATEGORIES,
   avgRating,
   inr,
@@ -18,12 +21,14 @@ export type Filters = {
   sizes: string[];
   colors: string[];
   fabrics: string[];
+  recipients: string[];
+  occasions: string[];
   maxPrice: number;
   minPrice: number;
   inStockOnly: boolean;
 };
 
-export const PRICE_MIN = 199;
+export const PRICE_MIN = 99;
 export const PRICE_MAX = 4999;
 
 export function emptyFilters(): Filters {
@@ -32,6 +37,8 @@ export function emptyFilters(): Filters {
     sizes: [],
     colors: [],
     fabrics: [],
+    recipients: [],
+    occasions: [],
     minPrice: PRICE_MIN,
     maxPrice: PRICE_MAX,
     inStockOnly: false,
@@ -44,6 +51,8 @@ export function activeCount(f: Filters) {
     f.sizes.length +
     f.colors.length +
     f.fabrics.length +
+    f.recipients.length +
+    f.occasions.length +
     (f.inStockOnly ? 1 : 0) +
     (f.maxPrice !== PRICE_MAX || f.minPrice !== PRICE_MIN ? 1 : 0)
   );
@@ -55,6 +64,8 @@ export function applyFilters(products: Product[], f: Filters, sort: SortKey) {
     if (f.sizes.length && !f.sizes.some((s) => p.sizes.includes(s))) return false;
     if (f.colors.length && !f.colors.some((c) => p.colors.includes(c))) return false;
     if (f.fabrics.length && !f.fabrics.includes(p.fabric)) return false;
+    if (f.recipients.length && !f.recipients.includes(p.recipient)) return false;
+    if (f.occasions.length && !f.occasions.includes(p.occasion)) return false;
     if (p.price < f.minPrice || p.price > f.maxPrice) return false;
     if (f.inStockOnly && !p.inStock) return false;
     return true;
@@ -81,22 +92,71 @@ export function FilterPanel({
   setFilters: (f: Filters) => void;
 }) {
   const subs = useMemo(() => SUBCATEGORIES[category], [category]);
+  const isGifts = category === "Accessories";
   const set = (patch: Partial<Filters>) => setFilters({ ...filters, ...patch });
 
   return (
     <div className="space-y-6">
-      <Section title="Sub-Category">
-        <div className="space-y-1.5">
-          {subs.map((s) => (
-            <Check
-              key={s}
-              label={s}
-              checked={filters.subs.includes(s)}
-              onChange={() => set({ subs: toggle(filters.subs, s) })}
-            />
+      {isGifts ? (
+        <>
+          {ACCESSORY_GROUPS.map((g) => (
+            <Section key={g.group} title={g.group}>
+              <div className="space-y-1.5">
+                {g.items.map((i) => {
+                  const value = `${g.group} \u203a ${i}`;
+                  return (
+                    <Check
+                      key={value}
+                      label={i}
+                      checked={filters.subs.includes(value)}
+                      onChange={() => set({ subs: toggle(filters.subs, value) })}
+                    />
+                  );
+                })}
+              </div>
+            </Section>
           ))}
-        </div>
-      </Section>
+
+          <Section title="Gift By Recipient">
+            <div className="flex flex-wrap gap-2">
+              {RECIPIENTS.map((r) => (
+                <Pill
+                  key={r}
+                  label={r}
+                  on={filters.recipients.includes(r)}
+                  onClick={() => set({ recipients: toggle(filters.recipients, r) })}
+                />
+              ))}
+            </div>
+          </Section>
+
+          <Section title="Occasion">
+            <div className="flex flex-wrap gap-2">
+              {OCCASIONS.map((o) => (
+                <Pill
+                  key={o}
+                  label={o}
+                  on={filters.occasions.includes(o)}
+                  onClick={() => set({ occasions: toggle(filters.occasions, o) })}
+                />
+              ))}
+            </div>
+          </Section>
+        </>
+      ) : (
+        <Section title="Sub-Category">
+          <div className="space-y-1.5">
+            {subs.map((s) => (
+              <Check
+                key={s}
+                label={s}
+                checked={filters.subs.includes(s)}
+                onChange={() => set({ subs: toggle(filters.subs, s) })}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Section title="Size">
         <div className="flex flex-wrap gap-2">
@@ -160,18 +220,20 @@ export function FilterPanel({
         </div>
       </Section>
 
-      <Section title="Fabric">
-        <div className="space-y-1.5">
-          {FABRICS.map((f) => (
-            <Check
-              key={f}
-              label={f}
-              checked={filters.fabrics.includes(f)}
-              onChange={() => set({ fabrics: toggle(filters.fabrics, f) })}
-            />
-          ))}
-        </div>
-      </Section>
+      {!isGifts && (
+        <Section title="Fabric">
+          <div className="space-y-1.5">
+            {FABRICS.map((f) => (
+              <Check
+                key={f}
+                label={f}
+                checked={filters.fabrics.includes(f)}
+                onChange={() => set({ fabrics: toggle(filters.fabrics, f) })}
+              />
+            ))}
+          </div>
+        </Section>
+      )}
 
       <Check
         label="In stock only"
@@ -264,5 +326,20 @@ function Check({
       <input type="checkbox" checked={checked} onChange={onChange} className="accent-primary" />
       {label}
     </label>
+  );
+}
+
+function Pill({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+        on ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background"
+      }`}
+    >
+      {label}
+    </button>
   );
 }

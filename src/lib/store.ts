@@ -8,13 +8,50 @@ import {
   type ProductInput,
 } from "@/lib/catalog.functions";
 
-export type Category = "Men" | "Women" | "Kids";
-export const CATEGORIES: Category[] = ["Men", "Women", "Kids"];
+export type Category = "Men" | "Women" | "Kids" | "Accessories";
+export const CATEGORIES: Category[] = ["Men", "Women", "Kids", "Accessories"];
+
+export const CATEGORY_LABELS: Record<Category, string> = {
+  Men: "Men",
+  Women: "Women",
+  Kids: "Kids",
+  Accessories: "Accessories & Gifts",
+};
+
+export const CATEGORY_HEADINGS: Record<Category, string> = {
+  Men: "Men's Collection",
+  Women: "Women's Collection",
+  Kids: "Kids' Collection",
+  Accessories: "Fashion Accessories & Gifts",
+};
+
 export const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 export type Size = (typeof SIZES)[number];
 
 export const KIDS_SIZES = ["2-3Y", "4-5Y", "6-7Y", "8-9Y", "10-12Y"] as const;
 export const ALL_SIZES = [...SIZES, "Free Size", ...KIDS_SIZES] as const;
+
+/** Grouped sub-categories for the Accessories & Gifts catalogue. */
+export const ACCESSORY_GROUPS: { group: string; items: string[] }[] = [
+  { group: "Watches", items: ["Analog", "Digital", "Smartwatches", "Couple Sets"] },
+  {
+    group: "Footwear / Shoes",
+    items: ["Sneakers", "Formal Shoes", "Sandals", "Heels", "Crocs"],
+  },
+  { group: "Jewelry", items: ["Rings", "Bracelets", "Chains", "Earrings", "Anklets"] },
+  { group: "Eyewear", items: ["Sunglasses", "Blue-light Glasses", "Frames"] },
+  {
+    group: "Fancy & Lifestyle",
+    items: ["Handbags", "Wallets", "Belts", "Keychains", "Perfumes / Fragrances"],
+  },
+  {
+    group: "Gifts & Combo Sets",
+    items: ["Customized Gifts", "Birthday Combos", "Festival Gift Packs", "Couple Gifts"],
+  },
+];
+
+export const RECIPIENTS = ["For Him", "For Her", "For Kids", "For Couples"] as const;
+export const OCCASIONS = ["Birthday", "Anniversary", "Wedding", "Casual Wear", "Festive"] as const;
 
 export const SUBCATEGORIES: Record<Category, string[]> = {
   Men: [
@@ -48,7 +85,9 @@ export const SUBCATEGORIES: Record<Category, string[]> = {
     "Nightwear",
     "Newborn Baby Clothing",
   ],
+  Accessories: ACCESSORY_GROUPS.flatMap((g) => g.items.map((i) => `${g.group} › ${i}`)),
 };
+
 
 export const COLORS: { name: string; hex: string }[] = [
   { name: "Red", hex: "#dc2626" },
@@ -84,6 +123,8 @@ export type Product = {
   sizes: string[];
   colors: string[];
   fabric: string;
+  recipient: string;
+  occasion: string;
   images: string[];
   inStock: boolean;
   reviews: Review[];
@@ -137,6 +178,8 @@ type ProductRow = {
   sizes: string[] | null;
   colors: string[] | null;
   fabric: string | null;
+  recipient: string | null;
+  occasion: string | null;
   images: string[] | null;
   in_stock: boolean | null;
   created_at: string;
@@ -168,6 +211,8 @@ function toProduct(row: ProductRow, reviews: Review[]): Product {
     sizes: (row.sizes ?? []).filter((s) => typeof s === "string"),
     colors: (row.colors ?? []).filter((c) => typeof c === "string"),
     fabric: row.fabric ?? "",
+    recipient: row.recipient ?? "",
+    occasion: row.occasion ?? "",
     images: (row.images ?? []).filter((i) => typeof i === "string" && i),
     inStock: row.in_stock !== false,
     reviews,
@@ -344,6 +389,8 @@ export async function commitChanges(): Promise<void> {
     sizes: p.sizes,
     colors: p.colors,
     fabric: p.fabric,
+    recipient: p.recipient,
+    occasion: p.occasion,
     images: p.images,
     inStock: p.inStock,
     createdAt: p.createdAt,

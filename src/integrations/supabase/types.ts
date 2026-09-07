@@ -52,7 +52,9 @@ export type Database = {
           images: string[]
           in_stock: boolean
           mrp: number
+          occasion: string
           price: number
+          recipient: string
           sizes: string[]
           sub_category: string
           title: string
@@ -67,7 +69,9 @@ export type Database = {
           images?: string[]
           in_stock?: boolean
           mrp?: number
+          occasion?: string
           price?: number
+          recipient?: string
           sizes?: string[]
           sub_category?: string
           title: string
@@ -82,7 +86,9 @@ export type Database = {
           images?: string[]
           in_stock?: boolean
           mrp?: number
+          occasion?: string
           price?: number
+          recipient?: string
           sizes?: string[]
           sub_category?: string
           title?: string
