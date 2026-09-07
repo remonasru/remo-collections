@@ -248,7 +248,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 commitChanges()
                   .then(() => toast.success("All changes saved successfully!"))
                   .catch(() =>
-                    toast.error("Could not save — storage is full. Remove a few product photos and try again."),
+                    toast.error("Could not save — please check your connection and try again."),
                   )
                   .finally(() => setSaving(false));
               }}
