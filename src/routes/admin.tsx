@@ -127,10 +127,12 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
         )}
         <button
           type="submit"
-          className="mt-5 w-full rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
+          disabled={checking}
+          className="mt-5 w-full rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60"
         >
-          Login
+          {checking ? "Checking…" : "Login"}
         </button>
+
       </form>
     </div>
   );
