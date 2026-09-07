@@ -1,0 +1,3 @@
+ALTER TABLE public.products
+  ADD COLUMN IF NOT EXISTS recipient text NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS occasion text NOT NULL DEFAULT '';
