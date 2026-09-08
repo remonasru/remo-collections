@@ -26,13 +26,13 @@ export const Route = createFileRoute("/category/$slug")({
     }
     return {
       meta: [
-        { title: `${c}'s Clothing Online — Remo Collections` },
+        { title: `${CATEGORY_LABELS[c]} — Shop Online at Remo Collections` },
         {
           name: "description",
-          content: `Browse the latest ${c.toLowerCase()}'s fashion at Remo Collections. Filter by sub-category, size, colour, fabric and price.`,
+          content: `Browse the latest ${CATEGORY_LABELS[c]} range at Remo Collections. Filter by sub-category, size, colour, price and more.`,
         },
-        { property: "og:title", content: `${c}'s Collection — Remo Collections` },
-        { property: "og:description", content: `Shop trending ${c.toLowerCase()}'s wear online.` },
+        { property: "og:title", content: `${CATEGORY_LABELS[c]} — Remo Collections` },
+        { property: "og:description", content: `Shop trending ${CATEGORY_LABELS[c]} online.` },
       ],
     };
   },

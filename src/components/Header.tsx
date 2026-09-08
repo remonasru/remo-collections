@@ -21,7 +21,7 @@ export function Header() {
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-4 py-3">
         <button
           type="button"
-          className="md:hidden"
+          className="lg:hidden"
           aria-label="Toggle menu"
           onClick={() => setOpen((o) => !o)}
         >
@@ -82,7 +82,7 @@ export function Header() {
       </div>
 
       {open && (
-        <nav className="flex flex-col gap-1 border-t border-primary-foreground/20 px-4 pb-3 text-sm font-semibold md:hidden">
+        <nav className="flex flex-col gap-1 border-t border-primary-foreground/20 px-4 pb-3 text-sm font-semibold lg:hidden">
           {CATEGORIES.map((c) => (
             <Link
               key={c}
