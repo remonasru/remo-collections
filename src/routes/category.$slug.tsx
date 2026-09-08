@@ -11,7 +11,7 @@ import {
   type Filters,
   type SortKey,
 } from "@/components/ProductFilters";
-import { CATEGORIES, useStore, type Category } from "@/lib/store";
+import { CATEGORIES, CATEGORY_HEADINGS, CATEGORY_LABELS, useStore, type Category } from "@/lib/store";
 
 export const Route = createFileRoute("/category/$slug")({
   loader: ({ params }) => {
@@ -26,13 +26,13 @@ export const Route = createFileRoute("/category/$slug")({
     }
     return {
       meta: [
-        { title: `${c}'s Clothing Online — Remo Collections` },
+        { title: `${CATEGORY_LABELS[c]} — Shop Online at Remo Collections` },
         {
           name: "description",
-          content: `Browse the latest ${c.toLowerCase()}'s fashion at Remo Collections. Filter by sub-category, size, colour, fabric and price.`,
+          content: `Browse the latest ${CATEGORY_LABELS[c]} range at Remo Collections. Filter by sub-category, size, colour, price and more.`,
         },
-        { property: "og:title", content: `${c}'s Collection — Remo Collections` },
-        { property: "og:description", content: `Shop trending ${c.toLowerCase()}'s wear online.` },
+        { property: "og:title", content: `${CATEGORY_LABELS[c]} — Remo Collections` },
+        { property: "og:description", content: `Shop trending ${CATEGORY_LABELS[c]} online.` },
       ],
     };
   },
@@ -53,7 +53,7 @@ function CategoryPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="font-display text-3xl font-extrabold">{category}'s Collection</h1>
+      <h1 className="font-display text-3xl font-extrabold">{CATEGORY_HEADINGS[category]}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{items.length} products found</p>
 
       <div className="mt-6 flex gap-6">

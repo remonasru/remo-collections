@@ -4,8 +4,9 @@ import heroImg from "@/assets/hero.jpg";
 import catMen from "@/assets/cat-men.jpg";
 import catWomen from "@/assets/cat-women.jpg";
 import catKids from "@/assets/cat-kids.jpg";
+import catAccessories from "@/assets/cat-accessories.jpg";
 import { ProductCard } from "@/components/ProductCard";
-import { CATEGORIES, useStore } from "@/lib/store";
+import { CATEGORIES, CATEGORY_HEADINGS, CATEGORY_LABELS, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,7 +27,12 @@ export const Route = createFileRoute("/")({
   component: Home,
 });
 
-const catImages: Record<string, string> = { Men: catMen, Women: catWomen, Kids: catKids };
+const catImages: Record<string, string> = {
+  Men: catMen,
+  Women: catWomen,
+  Kids: catKids,
+  Accessories: catAccessories,
+};
 
 function Home() {
   const { products } = useStore();
@@ -86,7 +92,7 @@ function Home() {
 
       <section className="mx-auto max-w-7xl px-4 py-10">
         <h2 className="font-display text-2xl font-bold">Shop by category</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-3">
+        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {CATEGORIES.map((c) => (
             <Link
               key={c}
@@ -96,14 +102,14 @@ function Home() {
             >
               <img
                 src={catImages[c]}
-                alt={`${c} clothing collection`}
+                alt={`${CATEGORY_LABELS[c]} collection`}
                 loading="lazy"
                 width={800}
                 height={1000}
                 className="aspect-4/3 w-full object-cover object-top"
               />
               <div className="absolute inset-x-0 bottom-0 gradient-brand p-4">
-                <p className="font-display text-lg font-bold text-primary-foreground">{c}</p>
+                <p className="font-display text-lg font-bold text-primary-foreground">{CATEGORY_LABELS[c]}</p>
               </div>
             </Link>
           ))}
@@ -116,7 +122,7 @@ function Home() {
         return (
           <section key={c} className="mx-auto max-w-7xl px-4 py-6">
             <div className="flex items-end justify-between">
-              <h2 className="font-display text-2xl font-bold">{c}'s Collection</h2>
+              <h2 className="font-display text-2xl font-bold">{CATEGORY_HEADINGS[c]}</h2>
               <Link
                 to="/category/$slug"
                 params={{ slug: c.toLowerCase() }}

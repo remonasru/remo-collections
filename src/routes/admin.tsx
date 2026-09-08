@@ -14,6 +14,8 @@ import {
   FABRICS,
   inr,
   loadOrders,
+  OCCASIONS,
+  RECIPIENTS,
   setAdminPass,
   setOrderStatus,
   setStaging,
@@ -286,6 +288,8 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
   const [sizes, setSizes] = useState<string[]>([...SIZES]);
   const [colors, setColors] = useState<string[]>([]);
   const [fabric, setFabric] = useState<string>(FABRICS[0]);
+  const [recipient, setRecipient] = useState("");
+  const [occasion, setOccasion] = useState("");
   const [images, setImages] = useState<string[]>([]);
 
   const MAX_IMAGES = 7;
@@ -378,6 +382,8 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       sizes,
       colors,
       fabric,
+      recipient,
+      occasion,
       images,
       inStock: true,
     });
@@ -388,6 +394,8 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
     setDescription("");
     setColors([]);
     setImages([]);
+    setRecipient("");
+    setOccasion("");
     onDone();
   }
 
@@ -436,6 +444,24 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
           <select value={fabric} onChange={(e) => setFabric(e.target.value)} className={inputCls}>
             {FABRICS.map((f) => (
               <option key={f}>{f}</option>
+            ))}
+          </select>
+        </L>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <L label="Gift Recipient (optional)">
+          <select value={recipient} onChange={(e) => setRecipient(e.target.value)} className={inputCls}>
+            <option value="">Not specified</option>
+            {RECIPIENTS.map((r) => (
+              <option key={r}>{r}</option>
+            ))}
+          </select>
+        </L>
+        <L label="Occasion (optional)">
+          <select value={occasion} onChange={(e) => setOccasion(e.target.value)} className={inputCls}>
+            <option value="">Not specified</option>
+            {OCCASIONS.map((o) => (
+              <option key={o}>{o}</option>
             ))}
           </select>
         </L>
@@ -571,7 +597,11 @@ function Inventory() {
           <div className="min-w-40 flex-1">
             <p className="font-semibold">{p.title}</p>
             <p className="text-xs text-muted-foreground">
-              {p.category} › {p.subCategory || "No sub-category"} · {p.fabric || "—"} ·{" "}
+              {p.category} › {p.subCategory || "No sub-category"} ·{" "}
+              {p.recipient || p.occasion
+                ? [p.recipient, p.occasion].filter(Boolean).join(" · ")
+                : p.fabric || "—"}{" "}
+              ·{" "}
               {p.sizes.join(", ") || "No sizes"} · {p.reviews.length} reviews
             </p>
           </div>
