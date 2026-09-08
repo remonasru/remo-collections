@@ -14,29 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          id: string
+          min_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          min_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          min_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       orders: {
         Row: {
+          coupon_code: string
           created_at: string
           customer: Json
+          discount: number
           id: string
           items: Json
           status: string
+          subtotal: number
           total: number
         }
         Insert: {
+          coupon_code?: string
           created_at?: string
           customer: Json
+          discount?: number
           id?: string
           items: Json
           status?: string
+          subtotal?: number
           total?: number
         }
         Update: {
+          coupon_code?: string
           created_at?: string
           customer?: Json
+          discount?: number
           id?: string
           items?: Json
           status?: string
+          subtotal?: number
           total?: number
         }
         Relationships: []
