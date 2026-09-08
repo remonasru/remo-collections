@@ -95,3 +95,61 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export type CouponInput = {
+  id: string;
+  code: string;
+  discountType: "percent" | "flat";
+  discountValue: number;
+  minOrder: number;
+  active: boolean;
+};
+
+export const listCoupons = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string }) => input)
+  .handler(async ({ data }) => {
+    const { assertAdmin } = await import("./admin.server");
+    assertAdmin(String(data.pass ?? ""));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows, error } = await supabaseAdmin
+      .from("coupons")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+/** Replaces the whole coupon list with the admin's staged snapshot. */
+export const saveCoupons = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string; coupons: CouponInput[] }) => input)
+  .handler(async ({ data }) => {
+    const { assertAdmin } = await import("./admin.server");
+    assertAdmin(String(data.pass ?? ""));
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const rows = (data.coupons ?? [])
+      .filter((c) => String(c.code ?? "").trim())
+      .map((c) => ({
+        id: isUuid(c.id) ? c.id : crypto.randomUUID(),
+        code: String(c.code).trim().toUpperCase(),
+        discount_type: c.discountType === "flat" ? "flat" : "percent",
+        discount_value: Number(c.discountValue) || 0,
+        min_order: Number(c.minOrder) || 0,
+        active: c.active !== false,
+      }));
+
+    const keep = rows.map((r) => r.id);
+    const del = keep.length
+      ? await supabaseAdmin.from("coupons").delete().not("id", "in", `(${keep.join(",")})`)
+      : await supabaseAdmin
+          .from("coupons")
+          .delete()
+          .neq("id", "00000000-0000-0000-0000-000000000000");
+    if (del.error) throw new Error(del.error.message);
+
+    if (rows.length) {
+      const { error } = await supabaseAdmin.from("coupons").upsert(rows);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, count: rows.length };
+  });
