@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useState } from "react";
-import { CATEGORIES, useStore } from "@/lib/store";
+import { CATEGORIES, CATEGORY_LABELS, useStore } from "@/lib/store";
 
 export function Header() {
   const { cart, wishlist } = useStore();
@@ -44,10 +44,10 @@ export function Header() {
           </div>
         </form>
 
-        <nav className="ml-auto hidden items-center gap-5 text-sm font-semibold md:flex">
+        <nav className="ml-auto hidden items-center gap-4 text-sm font-semibold lg:flex">
           {CATEGORIES.map((c) => (
             <Link key={c} to="/category/$slug" params={{ slug: c.toLowerCase() }} className="hover:opacity-80">
-              {c}
+              {CATEGORY_LABELS[c]}
             </Link>
           ))}
           <Link to="/admin" className="opacity-80 hover:opacity-100">
@@ -91,7 +91,7 @@ export function Header() {
               onClick={() => setOpen(false)}
               className="py-2"
             >
-              {c}
+              {CATEGORY_LABELS[c]}
             </Link>
           ))}
           <Link to="/admin" onClick={() => setOpen(false)} className="py-2 opacity-80">

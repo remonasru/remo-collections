@@ -11,7 +11,7 @@ import {
   type Filters,
   type SortKey,
 } from "@/components/ProductFilters";
-import { CATEGORIES, useStore, type Category } from "@/lib/store";
+import { CATEGORIES, CATEGORY_HEADINGS, CATEGORY_LABELS, useStore, type Category } from "@/lib/store";
 
 export const Route = createFileRoute("/category/$slug")({
   loader: ({ params }) => {
@@ -53,7 +53,7 @@ function CategoryPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
-      <h1 className="font-display text-3xl font-extrabold">{category}'s Collection</h1>
+      <h1 className="font-display text-3xl font-extrabold">{CATEGORY_HEADINGS[category]}</h1>
       <p className="mt-1 text-sm text-muted-foreground">{items.length} products found</p>
 
       <div className="mt-6 flex gap-6">
