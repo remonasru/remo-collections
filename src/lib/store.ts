@@ -2,8 +2,10 @@ import { useSyncExternalStore } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   adminLogin,
+  listCoupons,
   listOrders,
   saveCatalog,
+  saveCoupons,
   updateOrderStatus,
   type ProductInput,
 } from "@/lib/catalog.functions";
@@ -140,10 +142,24 @@ export type CartItem = {
 
 export type OrderStatus = "Pending" | "Shipped" | "Delivered";
 
+export type DiscountType = "percent" | "flat";
+
+export type Coupon = {
+  id: string;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number;
+  minOrder: number;
+  active: boolean;
+};
+
 export type Order = {
   id: string;
   customer: { name: string; address: string; phone: string; payment: string };
   items: { title: string; size: string; qty: number; price: number }[];
+  subtotal: number;
+  couponCode: string;
+  discount: number;
   total: number;
   status: OrderStatus;
   createdAt: number;
@@ -151,6 +167,7 @@ export type Order = {
 
 export type StoreState = {
   products: Product[];
+  coupons: Coupon[];
   cart: CartItem[];
   wishlist: string[];
   orders: Order[];
@@ -184,6 +201,26 @@ type ProductRow = {
   in_stock: boolean | null;
   created_at: string;
 };
+
+type CouponRow = {
+  id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number | string;
+  min_order: number | string;
+  active: boolean | null;
+};
+
+export function toCoupon(row: CouponRow): Coupon {
+  return {
+    id: row.id,
+    code: String(row.code ?? "").toUpperCase(),
+    discountType: row.discount_type === "flat" ? "flat" : "percent",
+    discountValue: Number(row.discount_value) || 0,
+    minOrder: Number(row.min_order) || 0,
+    active: row.active !== false,
+  };
+}
 
 type ReviewRow = {
   id: string;
@@ -223,6 +260,7 @@ function toProduct(row: ProductRow, reviews: Review[]): Product {
 /* ---------- state ---------- */
 const initial: StoreState = {
   products: [],
+  coupons: [],
   cart: [],
   wishlist: [],
   orders: [],
@@ -285,10 +323,12 @@ export function refreshCatalog(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   fetching ??= (async () => {
     try {
-      const [{ data: prodRows, error: pErr }, { data: revRows }] = await Promise.all([
-        supabase.from("products").select("*").order("created_at", { ascending: false }),
-        supabase.from("reviews").select("*").order("created_at", { ascending: false }),
-      ]);
+      const [{ data: prodRows, error: pErr }, { data: revRows }, { data: coupRows }] =
+        await Promise.all([
+          supabase.from("products").select("*").order("created_at", { ascending: false }),
+          supabase.from("reviews").select("*").order("created_at", { ascending: false }),
+          supabase.from("coupons").select("*").order("created_at", { ascending: false }),
+        ]);
       if (pErr) throw new Error(pErr.message);
       const byProduct = new Map<string, Review[]>();
       for (const r of (revRows ?? []) as ReviewRow[]) {
@@ -305,8 +345,9 @@ export function refreshCatalog(): Promise<void> {
       const products = ((prodRows ?? []) as ProductRow[]).map((row) =>
         toProduct(row, byProduct.get(row.id) ?? []),
       );
+      const coupons = ((coupRows ?? []) as CouponRow[]).map(toCoupon);
       // Never clobber unsaved admin edits.
-      if (!dirty) setState((s) => ({ ...s, products, loading: false }));
+      if (!dirty) setState((s) => ({ ...s, products, coupons, loading: false }));
       else setState((s) => ({ ...s, loading: false }));
     } catch {
       setState((s) => ({ ...s, loading: false }));
@@ -396,6 +437,21 @@ export async function commitChanges(): Promise<void> {
     createdAt: p.createdAt,
   }));
   await saveCatalog({ data: { pass: adminPass, products } });
+  if (couponsLoaded) {
+    await saveCoupons({
+      data: {
+        pass: adminPass,
+        coupons: state.coupons.map((c) => ({
+          id: c.id,
+          code: c.code,
+          discountType: c.discountType,
+          discountValue: c.discountValue,
+          minOrder: c.minOrder,
+          active: c.active,
+        })),
+      },
+    });
+  }
   dirty = false;
   notify();
   await refreshCatalog();
@@ -510,6 +566,9 @@ export function placeOrder(order: Omit<Order, "id" | "createdAt" | "status">): O
       id: full.id,
       customer: full.customer,
       items: full.items,
+      subtotal: full.subtotal,
+      coupon_code: full.couponCode,
+      discount: full.discount,
       total: full.total,
       status: full.status,
     })
@@ -524,6 +583,9 @@ export async function loadOrders(): Promise<void> {
       id: string;
       customer: Order["customer"];
       items: Order["items"];
+      subtotal: number | string | null;
+      coupon_code: string | null;
+      discount: number | string | null;
       total: number | string;
       status: string;
       created_at: string;
@@ -531,6 +593,9 @@ export async function loadOrders(): Promise<void> {
       id: o.id,
       customer: o.customer,
       items: Array.isArray(o.items) ? o.items : [],
+      subtotal: Number(o.subtotal) || Number(o.total) || 0,
+      couponCode: o.coupon_code ?? "",
+      discount: Number(o.discount) || 0,
       total: Number(o.total) || 0,
       status: (["Pending", "Shipped", "Delivered"].includes(o.status)
         ? o.status
@@ -578,7 +643,14 @@ export function buildWhatsAppMessage(order: Order) {
       (i, n) => `${n + 1}. ${i.title} | Size: ${i.size} | Qty: ${i.qty} | ${inr(i.price * i.qty)}`,
     ),
     "",
-    `*Total: ${inr(order.total)}*`,
+    `*Item Total:* ${inr(order.subtotal)}`,
+    ...(order.discount > 0
+      ? [
+          `*Coupon:* ${order.couponCode}`,
+          `*Discount:* -${inr(order.discount)}`,
+        ]
+      : []),
+    `*Total Payable: ${inr(order.total)}*`,
     `*Order ID:* ${order.id}`,
   ];
   return lines.join("\n");
@@ -597,4 +669,62 @@ export function buildUpiUrl(amount: number, orderId?: string) {
   ];
   if (orderId) parts.push(`tn=${encodeURIComponent(`Remo Order ${orderId}`)}`);
   return `upi://pay?${parts.join("&")}`;
+}
+
+
+/* ---------- coupons ---------- */
+let couponsLoaded = false;
+
+export async function loadAdminCoupons(): Promise<void> {
+  try {
+    const rows = await listCoupons({ data: { pass: adminPass } });
+    const coupons = (rows as unknown as CouponRow[]).map(toCoupon);
+    couponsLoaded = true;
+    setState((s) => ({ ...s, coupons }));
+  } catch {
+    /* keep whatever is on screen */
+  }
+}
+
+export function addCoupon(c: Omit<Coupon, "id">) {
+  stage((s) => ({ ...s, coupons: [{ ...c, id: uid() }, ...s.coupons] }));
+}
+
+export function updateCoupon(id: string, patch: Partial<Coupon>) {
+  stage((s) => ({
+    ...s,
+    coupons: s.coupons.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+  }));
+}
+
+export function deleteCoupon(id: string) {
+  stage((s) => ({ ...s, coupons: s.coupons.filter((c) => c.id !== id) }));
+}
+
+export function couponDiscount(coupon: Coupon, subtotal: number): number {
+  const raw =
+    coupon.discountType === "percent"
+      ? (subtotal * coupon.discountValue) / 100
+      : coupon.discountValue;
+  return Math.max(0, Math.min(subtotal, Math.round(raw)));
+}
+
+export type CouponCheck =
+  | { ok: true; coupon: Coupon; discount: number }
+  | { ok: false; reason: string };
+
+export function validateCoupon(code: string, subtotal: number): CouponCheck {
+  const wanted = code.trim().toUpperCase();
+  if (!wanted) return { ok: false, reason: "Please enter a coupon code" };
+  const coupon = state.coupons.find((c) => c.code.toUpperCase() === wanted && c.active);
+  if (!coupon) return { ok: false, reason: "Invalid or expired coupon code" };
+  if (subtotal < coupon.minOrder) {
+    return {
+      ok: false,
+      reason: `Add items worth ${inr(coupon.minOrder - subtotal)} more to apply this coupon`,
+    };
+  }
+  const discount = couponDiscount(coupon, subtotal);
+  if (discount <= 0) return { ok: false, reason: "This coupon gives no discount on your cart" };
+  return { ok: true, coupon, discount };
 }
