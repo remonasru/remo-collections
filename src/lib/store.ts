@@ -686,7 +686,9 @@ export async function loadAdminCoupons(): Promise<void> {
     const rows = await listCoupons({ data: { pass: adminPass } });
     const coupons = (rows as unknown as CouponRow[]).map(toCoupon);
     couponsLoaded = true;
-    setState((s) => ({ ...s, coupons }));
+    // Never clobber unsaved admin edits.
+    if (!dirty) setState((s) => ({ ...s, coupons }));
+    else notify();
   } catch {
     /* keep whatever is on screen */
   }
