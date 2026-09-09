@@ -424,6 +424,8 @@ function stage(updater: (s: StoreState) => StoreState) {
 }
 
 export async function commitChanges(): Promise<void> {
+  // Safety: never publish an empty catalogue before the live one has loaded.
+  if (state.loading) throw new Error("Catalogue is still loading — please try again in a moment.");
   const products: ProductInput[] = state.products.map((p) => ({
     id: p.id,
     title: p.title,
