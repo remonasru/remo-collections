@@ -347,7 +347,9 @@ export function refreshCatalog(): Promise<void> {
       );
       const coupons = ((coupRows ?? []) as CouponRow[]).map(toCoupon);
       // Never clobber unsaved admin edits.
-      if (!dirty) setState((s) => ({ ...s, products, coupons, loading: false }));
+      // Admins hold the full list (including inactive coupons) — don't overwrite it.
+      if (!dirty)
+        setState((s) => ({ ...s, products, coupons: couponsLoaded ? s.coupons : coupons, loading: false }));
       else setState((s) => ({ ...s, loading: false }));
     } catch {
       setState((s) => ({ ...s, loading: false }));
@@ -404,7 +406,10 @@ let dirty = false;
 
 export function setStaging(on: boolean) {
   staging = on;
-  if (!on) dirty = false;
+  if (!on) {
+    dirty = false;
+    couponsLoaded = false;
+  }
   notify();
 }
 
@@ -460,6 +465,7 @@ export async function commitChanges(): Promise<void> {
 export async function discardChanges(): Promise<void> {
   dirty = false;
   await refreshCatalog();
+  if (couponsLoaded) await loadAdminCoupons();
   notify();
 }
 
