@@ -347,7 +347,9 @@ export function refreshCatalog(): Promise<void> {
       );
       const coupons = ((coupRows ?? []) as CouponRow[]).map(toCoupon);
       // Never clobber unsaved admin edits.
-      if (!dirty) setState((s) => ({ ...s, products, coupons, loading: false }));
+      // Admins hold the full list (including inactive coupons) — don't overwrite it.
+      if (!dirty)
+        setState((s) => ({ ...s, products, coupons: couponsLoaded ? s.coupons : coupons, loading: false }));
       else setState((s) => ({ ...s, loading: false }));
     } catch {
       setState((s) => ({ ...s, loading: false }));
@@ -404,7 +406,10 @@ let dirty = false;
 
 export function setStaging(on: boolean) {
   staging = on;
-  if (!on) dirty = false;
+  if (!on) {
+    dirty = false;
+    couponsLoaded = false;
+  }
   notify();
 }
 
@@ -419,6 +424,8 @@ function stage(updater: (s: StoreState) => StoreState) {
 }
 
 export async function commitChanges(): Promise<void> {
+  // Safety: never publish an empty catalogue before the live one has loaded.
+  if (state.loading) throw new Error("Catalogue is still loading — please try again in a moment.");
   const products: ProductInput[] = state.products.map((p) => ({
     id: p.id,
     title: p.title,
@@ -460,6 +467,7 @@ export async function commitChanges(): Promise<void> {
 export async function discardChanges(): Promise<void> {
   dirty = false;
   await refreshCatalog();
+  if (couponsLoaded) await loadAdminCoupons();
   notify();
 }
 
@@ -680,7 +688,9 @@ export async function loadAdminCoupons(): Promise<void> {
     const rows = await listCoupons({ data: { pass: adminPass } });
     const coupons = (rows as unknown as CouponRow[]).map(toCoupon);
     couponsLoaded = true;
-    setState((s) => ({ ...s, coupons }));
+    // Never clobber unsaved admin edits.
+    if (!dirty) setState((s) => ({ ...s, coupons }));
+    else notify();
   } catch {
     /* keep whatever is on screen */
   }

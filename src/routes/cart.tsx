@@ -13,6 +13,8 @@ import {
   setCartQty,
   UPI_VPA,
   useStore,
+  validateCoupon,
+  type Coupon,
   WHATSAPP_NUMBER,
 } from "@/lib/store";
 
@@ -52,6 +54,9 @@ function CartPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", address: "", phone: "", payment: "COD" as "COD" | "UPI" });
   const [done, setDone] = useState<{ wa: string; upi: string | null } | null>(null);
+  const [codeInput, setCodeInput] = useState("");
+  const [applied, setApplied] = useState<{ coupon: Coupon; discount: number } | null>(null);
+  const [couponError, setCouponError] = useState("");
   const waTimerRef = useRef<number | undefined>(undefined);
 
   // Clear any pending WhatsApp hand-off so a page change can't fire it after unmount.
@@ -61,7 +66,41 @@ function CartPage() {
     .map((c) => ({ item: c, product: products.find((p) => p.id === c.productId) }))
     .filter((r) => r.product);
 
-  const total = rows.reduce((a, r) => a + r.product!.price * r.item.qty, 0);
+  const subtotal = rows.reduce((a, r) => a + r.product!.price * r.item.qty, 0);
+
+  // Re-check the applied coupon whenever the basket changes.
+  useEffect(() => {
+    if (!applied) return;
+    const res = validateCoupon(applied.coupon.code, subtotal);
+    if (!res.ok) {
+      setApplied(null);
+      setCouponError(res.reason);
+    } else if (res.discount !== applied.discount) {
+      setApplied({ coupon: res.coupon, discount: res.discount });
+    }
+  }, [subtotal, applied]);
+
+  const discount = applied ? Math.min(applied.discount, subtotal) : 0;
+  const total = Math.max(0, subtotal - discount);
+
+  function applyCoupon() {
+    const res = validateCoupon(codeInput, subtotal);
+    if (!res.ok) {
+      setApplied(null);
+      setCouponError(res.reason);
+      toast.error(res.reason);
+      return;
+    }
+    setApplied({ coupon: res.coupon, discount: res.discount });
+    setCouponError("");
+    setCodeInput("");
+    toast.success(`Coupon ${res.coupon.code} applied — you saved ${inr(res.discount)}`);
+  }
+
+  function removeCoupon() {
+    setApplied(null);
+    setCouponError("");
+  }
 
   function confirmOrder(e: React.FormEvent) {
     e.preventDefault();
@@ -83,6 +122,9 @@ function CartPage() {
         qty: r.item.qty,
         price: r.product!.price,
       })),
+      subtotal,
+      couponCode: applied ? applied.coupon.code : "",
+      discount,
       total,
     });
 
@@ -101,6 +143,7 @@ function CartPage() {
     waTimerRef.current = waTimer;
 
     setDone({ wa, upi });
+    setApplied(null);
     clearCart();
     setOpen(false);
     toast.success(isUpi ? "Opening your UPI app…" : "Order placed! Opening WhatsApp…");
@@ -201,11 +244,71 @@ function CartPage() {
           <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-card">
             <h2 className="font-display text-lg font-bold">Price Details</h2>
             <div className="mt-4 space-y-2 text-sm">
-              <Row label={`Items (${rows.reduce((a, r) => a + r.item.qty, 0)})`} value={inr(total)} />
+              <Row label={`Items (${rows.reduce((a, r) => a + r.item.qty, 0)})`} value={inr(subtotal)} />
               <Row label="Delivery" value="Free" />
+              {applied && (
+                <div className="flex justify-between text-success">
+                  <span className="font-semibold">Coupon Discount ({applied.coupon.code})</span>
+                  <span className="font-semibold">-{inr(discount)}</span>
+                </div>
+              )}
               <div className="border-t border-border pt-3">
                 <Row label="Total Amount" value={inr(total)} bold />
               </div>
+            </div>
+
+            <div className="mt-4 rounded-md border border-dashed border-input p-3">
+              {applied ? (
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-success">{applied.coupon.code} applied</p>
+                    <p className="text-xs text-muted-foreground">You saved {inr(discount)}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={removeCoupon}
+                    aria-label="Remove coupon"
+                    className="rounded-md border border-input px-3 py-1.5 text-xs font-bold text-destructive"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+                    Have a Promo/Coupon Code?
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={codeInput}
+                      onChange={(e) => {
+                        setCodeInput(e.target.value.toUpperCase());
+                        setCouponError("");
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          applyCoupon();
+                        }
+                      }}
+                      placeholder="Enter coupon code"
+                      maxLength={24}
+                      aria-label="Coupon code"
+                      className="min-w-0 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={applyCoupon}
+                      className="rounded-md bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  {couponError && (
+                    <p className="mt-2 text-xs font-semibold text-destructive">{couponError}</p>
+                  )}
+                </>
+              )}
             </div>
             <button
               type="button"

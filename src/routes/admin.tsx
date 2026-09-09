@@ -4,13 +4,17 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
 import {
+  addCoupon,
   addProduct,
   ALL_SIZES,
   CATEGORIES,
   COLORS,
   commitChanges,
   discardChanges,
+  deleteCoupon,
   deleteProduct,
+  loadAdminCoupons,
+  updateCoupon,
   FABRICS,
   inr,
   loadOrders,
@@ -26,6 +30,7 @@ import {
   useStore,
   verifyAdminLogin,
   type Category,
+  type Coupon,
   type OrderStatus,
 } from "@/lib/store";
 
@@ -140,10 +145,10 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-type Tab = "add" | "inventory" | "orders";
+type Tab = "add" | "inventory" | "orders" | "coupons";
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
-  const { products, orders } = useStore();
+  const { products, orders, coupons } = useStore();
   const dirty = useDirty();
   const [tab, setTab] = useState<Tab>("inventory");
   const [saving, setSaving] = useState(false);
@@ -152,6 +157,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   useEffect(() => {
     setStaging(true);
     void loadOrders();
+    void loadAdminCoupons();
     return () => {
       void discardChanges();
       setStaging(false);
@@ -201,6 +207,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             ["inventory", "Manage Inventory"],
             ["add", "Add Product"],
             ["orders", `Orders (${orders.length})`],
+            ["coupons", `Coupons & Offers (${coupons.length})`],
           ] as [Tab, string][]
         ).map(([key, label]) => (
           <button
@@ -220,6 +227,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab === "add" && <AddProductForm onDone={() => setTab("inventory")} />}
         {tab === "inventory" && <Inventory />}
         {tab === "orders" && <Orders />}
+        {tab === "coupons" && <Coupons />}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
@@ -684,7 +692,15 @@ function Orders() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-right font-display text-lg font-extrabold">Total: {inr(o.total)}</p>
+          <div className="mt-3 space-y-1 text-right text-sm">
+            <p className="text-muted-foreground">Item Total: {inr(o.subtotal || o.total)}</p>
+            {o.discount > 0 && (
+              <p className="font-semibold text-success">
+                Coupon {o.couponCode}: -{inr(o.discount)}
+              </p>
+            )}
+            <p className="font-display text-lg font-extrabold">Total Paid: {inr(o.total)}</p>
+          </div>
         </div>
       ))}
     </div>
@@ -701,5 +717,150 @@ function L({ label, children }: { label: string; children: React.ReactNode }) {
       </span>
       {children}
     </label>
+  );
+}
+
+
+function Coupons() {
+  const { coupons } = useStore();
+  const [code, setCode] = useState("");
+  const [type, setType] = useState<Coupon["discountType"]>("percent");
+  const [value, setValue] = useState("");
+  const [minOrder, setMinOrder] = useState("");
+
+  function submit(e: React.FormEvent) {
+    e.preventDefault();
+    const clean = code.trim().toUpperCase();
+    const v = Number(value);
+    if (!clean) {
+      toast.error("Please enter a coupon code");
+      return;
+    }
+    if (coupons.some((c) => c.code.toUpperCase() === clean)) {
+      toast.error("That coupon code already exists");
+      return;
+    }
+    if (!v || v <= 0 || (type === "percent" && v > 100)) {
+      toast.error(type === "percent" ? "Enter a percentage between 1 and 100" : "Enter a valid discount amount");
+      return;
+    }
+    addCoupon({
+      code: clean,
+      discountType: type,
+      discountValue: v,
+      minOrder: Math.max(0, Number(minOrder) || 0),
+      active: true,
+    });
+    toast.success("Coupon added — click Save Changes to publish");
+    setCode("");
+    setValue("");
+    setMinOrder("");
+  }
+
+  return (
+    <div className="space-y-6">
+      <form onSubmit={submit} className="max-w-2xl space-y-4 rounded-xl border border-border bg-card p-5 shadow-card">
+        <h2 className="font-display text-lg font-bold">Create a Coupon</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <L label="Coupon Code">
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              placeholder="REMO10"
+              className={inputCls}
+            />
+          </L>
+          <L label="Discount Type">
+            <select
+              value={type}
+              onChange={(e) => setType(e.target.value as Coupon["discountType"])}
+              className={inputCls}
+            >
+              <option value="percent">Percentage (%)</option>
+              <option value="flat">Flat Amount (₹)</option>
+            </select>
+          </L>
+          <L label={type === "percent" ? "Discount (%)" : "Discount (₹)"}>
+            <input value={value} onChange={(e) => setValue(e.target.value)} inputMode="numeric" className={inputCls} />
+          </L>
+          <L label="Minimum Order Amount (₹)">
+            <input
+              value={minOrder}
+              onChange={(e) => setMinOrder(e.target.value)}
+              inputMode="numeric"
+              placeholder="0"
+              className={inputCls}
+            />
+          </L>
+        </div>
+        <button type="submit" className="rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground">
+          Add Coupon
+        </button>
+      </form>
+
+      <div className="space-y-3">
+        {coupons.length === 0 && <p className="text-muted-foreground">No coupons yet.</p>}
+        {coupons.map((c) => (
+          <div
+            key={c.id}
+            className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3 shadow-card"
+          >
+            <div className="min-w-40 flex-1">
+              <p className="font-display font-bold tracking-wide">{c.code}</p>
+              <p className="text-xs text-muted-foreground">
+                {c.discountType === "percent" ? `${c.discountValue}% OFF` : `${inr(c.discountValue)} OFF`} ·
+                Min order {inr(c.minOrder)}
+              </p>
+            </div>
+            <label className="text-xs font-bold uppercase text-muted-foreground">
+              Value
+              <input
+                key={`${c.id}-${c.discountValue}`}
+                defaultValue={c.discountValue}
+                onBlur={(e) => {
+                  const v = Number(e.target.value);
+                  if (v > 0 && !(c.discountType === "percent" && v > 100)) {
+                    updateCoupon(c.id, { discountValue: v });
+                  }
+                }}
+                inputMode="numeric"
+                className="ml-2 w-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm font-normal normal-case text-foreground"
+              />
+            </label>
+            <label className="text-xs font-bold uppercase text-muted-foreground">
+              Min ₹
+              <input
+                key={`${c.id}-${c.minOrder}`}
+                defaultValue={c.minOrder}
+                onBlur={(e) => updateCoupon(c.id, { minOrder: Math.max(0, Number(e.target.value) || 0) })}
+                inputMode="numeric"
+                className="ml-2 w-20 rounded-md border border-input bg-background px-2 py-1.5 text-sm font-normal normal-case text-foreground"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => updateCoupon(c.id, { active: !c.active })}
+              className={`rounded-md px-3 py-2 text-xs font-bold ${
+                c.active ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"
+              }`}
+            >
+              {c.active ? "Active" : "Inactive"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(`Delete coupon "${c.code}"?`)) {
+                  deleteCoupon(c.id);
+                  toast.success("Coupon deleted");
+                }
+              }}
+              className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-2 text-xs font-bold text-destructive"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
