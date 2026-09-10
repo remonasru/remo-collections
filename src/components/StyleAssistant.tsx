@@ -191,19 +191,19 @@ export function StyleAssistant() {
             </>
           )}
 
-          {mode === "quiz" && (
+          {mode === "quiz" && current && (
             <>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Step {step + 1} of {steps.length}
               </p>
-              <p className="text-sm font-semibold">{steps[step].label}</p>
+              <p className="text-sm font-semibold">{current.label}</p>
               <div className="flex flex-wrap gap-2">
-                {steps[step].options.map((o) => (
+                {current.options.map((o) => (
                   <Chip
                     key={o}
                     label={o}
-                    active={answers[steps[step].key] === o}
-                    onClick={() => choose(steps[step].key, o)}
+                    active={answers[current.key] === o}
+                    onClick={() => choose(current.key, o)}
                   />
                 ))}
               </div>
