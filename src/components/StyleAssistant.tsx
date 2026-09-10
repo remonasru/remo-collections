@@ -116,6 +116,8 @@ export function StyleAssistant() {
     { key: "budget", label: "What's your budget?", options: BUDGETS },
   ];
 
+  const current = steps[Math.min(step, steps.length - 1)];
+
   const choose = (key: keyof Answers, value: string) => {
     setAnswers((a) => ({ ...a, [key]: value }));
     if (step >= steps.length - 1) setMode("results");
