@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { StyleAssistant } from "@/components/StyleAssistant";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -140,6 +141,7 @@ function RootComponent() {
         </main>
         <Footer />
       </div>
+      <StyleAssistant />
       <Toaster position="top-center" richColors />
     </QueryClientProvider>
   );
