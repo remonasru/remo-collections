@@ -96,9 +96,11 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
         setError("Invalid Credentials");
         toast.error("Invalid Credentials");
       }
-    } catch {
-      setError("Could not reach the server. Please try again.");
-      toast.error("Could not reach the server");
+    } catch (err) {
+      console.error("[Admin] Login request failed", err);
+      const msg = describeSaveError(err);
+      setError(msg);
+      toast.error(msg, { duration: 8000 });
     } finally {
       setChecking(false);
     }
@@ -259,9 +261,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
                 setSaving(true);
                 commitChanges()
                   .then(() => toast.success("All changes saved successfully!"))
-                  .catch(() =>
-                    toast.error("Could not save — please check your connection and try again."),
-                  )
+                  .catch((err: unknown) => {
+                    console.error("[Admin] Save failed", err);
+                    toast.error(describeSaveError(err), { duration: 8000 });
+                  })
                   .finally(() => setSaving(false));
               }}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground shadow-card disabled:opacity-50"
