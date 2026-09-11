@@ -36,6 +36,23 @@ import {
 
 const SESSION_KEY = "remo-admin-session";
 
+/** Turns a failed network/server call into a message that says what actually broke. */
+function describeSaveError(err: unknown): string {
+  const raw = err instanceof Error ? err.message : String(err ?? "");
+  const host = typeof window !== "undefined" ? window.location.host : "";
+  if (/failed to fetch|networkerror|load failed/i.test(raw)) {
+    return `Could not reach the store server from ${host || "this site"}. This copy of the site has no backend connected.`;
+  }
+  if (/unauthorized/i.test(raw)) return "Admin session expired — please log in again.";
+  if (/404|not found/i.test(raw)) {
+    return `The save endpoint is missing on ${host || "this site"}. This copy of the site is not the live Lovable deployment.`;
+  }
+  if (/csrf|forbidden|403/i.test(raw)) {
+    return `The server rejected the request from ${host || "this site"} (blocked origin).`;
+  }
+  return raw ? `Save failed: ${raw}` : "Save failed — please try again.";
+}
+
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
