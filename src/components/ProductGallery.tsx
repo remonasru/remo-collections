@@ -131,20 +131,22 @@ export function ProductGallery({ product }: Props) {
       </div>
 
       {count > 1 && (
-        <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto">
-          {images.map((img, i) => (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Show image ${i + 1}`}
-              onClick={() => setIndex(i)}
-              className={`h-20 w-16 shrink-0 overflow-hidden rounded-md border-2 ${
-                i === index ? "border-primary" : "border-border"
-              }`}
-            >
-              <img src={img} alt={`${product.title} thumbnail ${i + 1}`} className="h-full w-full object-cover" />
-            </button>
-          ))}
+        <div className="max-w-full w-full overflow-hidden">
+          <div className="no-scrollbar mt-3 flex gap-3 overflow-x-auto">
+            {images.map((img, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Show image ${i + 1}`}
+                onClick={() => setIndex(i)}
+                className={`h-20 w-16 shrink-0 overflow-hidden rounded-md border-2 ${
+                  i === index ? "border-primary" : "border-border"
+                }`}
+              >
+                <img src={img} alt={`${product.title} thumbnail ${i + 1}`} className="h-full w-full object-cover" />
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
