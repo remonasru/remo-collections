@@ -41,8 +41,8 @@ export function ProductGallery({ product }: Props) {
 
   if (count === 0) {
     return (
-      <div className="aspect-4/5 overflow-hidden rounded-xl border border-border bg-secondary shadow-card">
-        <ProductImage product={product} />
+    <div className="aspect-square max-h-[420px] overflow-hidden rounded-xl border border-border bg-secondary shadow-card md:max-h-[520px]">
+        <ProductImage product={product} className="h-full w-full object-contain" />
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function ProductGallery({ product }: Props) {
   return (
     <div>
       <div
-        className="group relative aspect-4/5 select-none overflow-hidden rounded-xl border border-border bg-secondary shadow-card"
+        className="group relative aspect-square max-h-[420px] select-none overflow-hidden rounded-xl border border-border bg-secondary shadow-card md:max-h-[520px]"
         onTouchStart={(e) => {
           touchX.current = e.touches[0]?.clientX ?? null;
         }}
@@ -77,7 +77,7 @@ export function ProductGallery({ product }: Props) {
         <img
           src={current}
           alt={`${product.title} — photo ${index + 1} of ${count}`}
-          className="h-full w-full cursor-zoom-in object-cover transition-transform duration-200"
+          className="h-full w-full cursor-zoom-in object-contain transition-transform duration-200"
           style={{ transformOrigin: origin, transform: hoverZoom ? "scale(1.8)" : "scale(1)" }}
           onClick={() => setZoomOpen(true)}
           onError={() => setBroken((prev) => (prev.includes(current) ? prev : [...prev, current]))}
