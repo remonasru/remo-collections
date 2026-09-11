@@ -53,9 +53,9 @@ export function ProductGallery({ product }: Props) {
 
 
   return (
-    <div>
+    <div className="max-w-full w-full overflow-hidden">
       <div
-        className="group relative aspect-square max-h-[420px] select-none overflow-hidden rounded-xl border border-border bg-secondary shadow-card md:max-h-[520px]"
+        className="group relative aspect-square max-h-[400px] w-full select-none overflow-hidden rounded-xl border border-border bg-secondary shadow-card md:max-h-[500px]"
         onTouchStart={(e) => {
           touchX.current = e.touches[0]?.clientX ?? null;
         }}
