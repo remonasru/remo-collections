@@ -41,8 +41,10 @@ export function ProductGallery({ product }: Props) {
 
   if (count === 0) {
     return (
-    <div className="aspect-square max-h-[420px] overflow-hidden rounded-xl border border-border bg-secondary shadow-card md:max-h-[520px]">
-        <ProductImage product={product} className="h-full w-full object-contain" />
+      <div className="max-w-full w-full overflow-hidden">
+        <div className="aspect-square max-h-[400px] overflow-hidden rounded-xl border border-border bg-secondary shadow-card md:max-h-[500px]">
+          <ProductImage product={product} className="h-full w-full object-contain" />
+        </div>
       </div>
     );
   }
