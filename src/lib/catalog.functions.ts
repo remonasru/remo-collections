@@ -153,3 +153,32 @@ export const saveCoupons = createServerFn({ method: "POST" })
     }
     return { ok: true, count: rows.length };
   });
+
+/** Saves the public APK download URL after verifying the admin password. */
+export const saveApkUrl = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string; url: string }) => input)
+  .handler(async ({ data }) => {
+    const { assertAdmin } = await import("./admin.server");
+    assertAdmin(String(data.pass ?? ""));
+    const url = String(data.url ?? "").trim();
+    if (url) {
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        throw new Error("Enter a valid APK download URL.");
+      }
+      if (parsed.protocol !== "https:") {
+        throw new Error("APK download links must use HTTPS.");
+      }
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("app_settings").upsert({
+      key: "apk_url",
+      value: url,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

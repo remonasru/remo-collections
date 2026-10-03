@@ -5,6 +5,7 @@ import {
   listCoupons,
   listOrders,
   saveCatalog,
+  saveApkUrl,
   saveCoupons,
   updateOrderStatus,
   type ProductInput,
@@ -171,6 +172,7 @@ export type StoreState = {
   cart: CartItem[];
   wishlist: string[];
   orders: Order[];
+  apkUrl: string;
   loading: boolean;
 };
 
@@ -264,6 +266,7 @@ const initial: StoreState = {
   cart: [],
   wishlist: [],
   orders: [],
+  apkUrl: "",
   loading: true,
 };
 
@@ -323,11 +326,17 @@ export function refreshCatalog(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   fetching ??= (async () => {
     try {
-      const [{ data: prodRows, error: pErr }, { data: revRows }, { data: coupRows }] =
+      const [
+        { data: prodRows, error: pErr },
+        { data: revRows },
+        { data: coupRows },
+        { data: appSettings },
+      ] =
         await Promise.all([
           supabase.from("products").select("*").order("created_at", { ascending: false }),
           supabase.from("reviews").select("*").order("created_at", { ascending: false }),
           supabase.from("coupons").select("*").order("created_at", { ascending: false }),
+          supabase.from("app_settings").select("value").eq("key", "apk_url").maybeSingle(),
         ]);
       if (pErr) throw new Error(pErr.message);
       const byProduct = new Map<string, Review[]>();
@@ -346,10 +355,17 @@ export function refreshCatalog(): Promise<void> {
         toProduct(row, byProduct.get(row.id) ?? []),
       );
       const coupons = ((coupRows ?? []) as CouponRow[]).map(toCoupon);
+      const apkUrl = appSettings?.value ?? "";
       // Never clobber unsaved admin edits.
       // Admins hold the full list (including inactive coupons) — don't overwrite it.
       if (!dirty)
-        setState((s) => ({ ...s, products, coupons: couponsLoaded ? s.coupons : coupons, loading: false }));
+        setState((s) => ({
+          ...s,
+          products,
+          coupons: couponsLoaded ? s.coupons : coupons,
+          apkUrl,
+          loading: false,
+        }));
       else setState((s) => ({ ...s, loading: false }));
     } catch {
       setState((s) => ({ ...s, loading: false }));
@@ -459,9 +475,14 @@ export async function commitChanges(): Promise<void> {
       },
     });
   }
+  await saveApkUrl({ data: { pass: adminPass, url: state.apkUrl } });
   dirty = false;
   notify();
   await refreshCatalog();
+}
+
+export function setApkUrl(url: string) {
+  stage((s) => ({ ...s, apkUrl: url }));
 }
 
 export async function discardChanges(): Promise<void> {
