@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Menu, Search, ShoppingCart, X } from "lucide-react";
 import { useState } from "react";
 import { CATEGORIES, CATEGORY_LABELS, useStore } from "@/lib/store";
+import { InstallAction } from "@/components/InstallApp";
 
 export function Header() {
   const { cart, wishlist } = useStore();
@@ -53,6 +54,7 @@ export function Header() {
           <Link to="/admin" className="opacity-80 hover:opacity-100">
             Admin
           </Link>
+          <InstallAction className="border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10" />
         </nav>
 
         <div className="ml-auto flex items-center gap-4 md:ml-4">
@@ -97,6 +99,7 @@ export function Header() {
           <Link to="/admin" onClick={() => setOpen(false)} className="py-2 opacity-80">
             Admin Panel
           </Link>
+          <InstallAction className="mt-2 self-start border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10" />
         </nav>
       )}
     </header>

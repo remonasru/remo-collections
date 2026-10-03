@@ -21,6 +21,7 @@ import {
   OCCASIONS,
   RECIPIENTS,
   setAdminPass,
+  setApkUrl,
   setOrderStatus,
   setStaging,
   SIZES,
@@ -164,7 +165,7 @@ function Login({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-type Tab = "add" | "inventory" | "orders" | "coupons";
+type Tab = "add" | "inventory" | "orders" | "coupons" | "install";
 
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { products, orders, coupons } = useStore();
@@ -227,6 +228,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             ["add", "Add Product"],
             ["orders", `Orders (${orders.length})`],
             ["coupons", `Coupons & Offers (${coupons.length})`],
+            ["install", "Install / APK"],
           ] as [Tab, string][]
         ).map(([key, label]) => (
           <button
@@ -247,6 +249,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab === "inventory" && <Inventory />}
         {tab === "orders" && <Orders />}
         {tab === "coupons" && <Coupons />}
+        {tab === "install" && <InstallSettings />}
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
@@ -882,5 +885,29 @@ function Coupons() {
         ))}
       </div>
     </div>
+  );
+}
+
+function InstallSettings() {
+  const { apkUrl } = useStore();
+  return (
+    <section className="max-w-2xl space-y-4">
+      <div>
+        <h2 className="font-display text-lg font-bold">Android APK download</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Add an HTTPS link to show a direct Android download option. Leave it blank to hide it.
+        </p>
+      </div>
+      <L label="APK download URL">
+        <input
+          type="url"
+          inputMode="url"
+          value={apkUrl}
+          onChange={(event) => setApkUrl(event.target.value)}
+          placeholder="https://example.com/remo-collections.apk"
+          className={inputCls}
+        />
+      </L>
+    </section>
   );
 }
