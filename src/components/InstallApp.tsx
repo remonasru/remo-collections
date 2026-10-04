@@ -22,7 +22,7 @@ function subscribeInstallState(listener: () => void) {
 }
 
 function getInstallState() {
-  return { canPrompt: Boolean(deferredPrompt), installed };
+  return `${deferredPrompt ? "prompt" : "manual"}:${installed ? "installed" : "available"}`;
 }
 
 async function promptInstall() {
@@ -36,7 +36,8 @@ async function promptInstall() {
 }
 
 function useInstallState() {
-  return useSyncExternalStore(subscribeInstallState, getInstallState, () => ({ canPrompt: false, installed: false }));
+  const value = useSyncExternalStore(subscribeInstallState, getInstallState, () => "manual:available");
+  return { canPrompt: value.startsWith("prompt:"), installed: value.endsWith(":installed") };
 }
 
 export function InstallAction({ className = "" }: { className?: string }) {
@@ -105,6 +106,7 @@ export function InstallApp() {
   const { canPrompt, installed: isInstalled } = useInstallState();
   const [mobile, setMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const onBeforeInstall = (event: Event) => {
@@ -131,7 +133,7 @@ export function InstallApp() {
   }, []);
 
   useEffect(() => {
-    if (!mobile || isInstalled || (!canPrompt && !apkUrl)) return;
+    if (!mobile || isInstalled) return;
     try {
       setDismissed(window.sessionStorage.getItem("remo-install-banner-dismissed") === "1");
     } catch {
@@ -139,10 +141,10 @@ export function InstallApp() {
     }
   }, [mobile, canPrompt, isInstalled, apkUrl]);
 
-  if (!mobile || dismissed || isInstalled || (!canPrompt && !apkUrl)) return null;
+  if (!mobile || dismissed || isInstalled) return null;
 
   return (
-    <aside className="fixed inset-x-3 bottom-3 z-[60] mx-auto flex max-w-lg items-center gap-3 rounded-lg border border-border bg-background p-3 text-foreground shadow-lg md:hidden">
+    <aside className="fixed inset-x-3 bottom-20 z-[60] mx-auto flex max-w-lg items-center gap-3 rounded-lg border border-border bg-background p-3 text-foreground shadow-lg md:hidden">
       <img src="/icon-192.png" alt="" width={44} height={44} className="h-11 w-11 rounded-md" />
       <div className="min-w-0 flex-1">
         <p className="font-display text-sm font-bold">Remo Collections</p>
@@ -150,10 +152,12 @@ export function InstallApp() {
       </div>
       {canPrompt ? (
         <Button size="sm" onClick={() => void promptInstall()}>Install</Button>
-      ) : (
+      ) : apkUrl ? (
         <Button asChild size="sm">
           <a href={apkUrl} target="_blank" rel="noreferrer">Download</a>
         </Button>
+      ) : (
+        <Button size="sm" onClick={() => setShowHelp(true)}>Add</Button>
       )}
       <Button
         variant="ghost"
@@ -170,6 +174,34 @@ export function InstallApp() {
       >
         <X aria-hidden="true" />
       </Button>
+      {showHelp && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-foreground/40 p-4 sm:items-center" onClick={() => setShowHelp(false)}>
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-install-title"
+            className="w-full max-w-sm space-y-3 rounded-lg border border-border bg-background p-5 text-foreground shadow-lg"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 id="mobile-install-title" className="font-display text-lg font-bold">Add Remo Collections</h2>
+              <Button variant="ghost" size="icon" aria-label="Close install help" onClick={() => setShowHelp(false)}>
+                <X aria-hidden="true" />
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {/(iphone|ipad|ipod)/i.test(navigator.userAgent)
+                ? "In Safari, tap Share, then choose Add to Home Screen."
+                : "Open your browser menu, then choose Install app or Add to Home Screen."}
+            </p>
+            {apkUrl && (
+              <Button asChild className="w-full">
+                <a href={apkUrl} target="_blank" rel="noreferrer">Download Android APK</a>
+              </Button>
+            )}
+          </section>
+        </div>
+      )}
     </aside>
   );
 }

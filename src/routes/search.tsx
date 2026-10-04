@@ -10,6 +10,8 @@ export const Route = createFileRoute("/search")({
       { name: "description", content: "Search shirts, kurtis, dresses and kids wear at Remo Collections." },
       { property: "og:title", content: "Search Products — Remo Collections" },
       { property: "og:description", content: "Find your next favourite outfit at Remo Collections." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),

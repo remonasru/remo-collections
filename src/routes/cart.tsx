@@ -43,6 +43,8 @@ export const Route = createFileRoute("/cart")({
       { name: "description", content: "Review your items and place your order on WhatsApp." },
       { property: "og:title", content: "Shopping Cart — Remo Collections" },
       { property: "og:description", content: "Review your items and place your order on WhatsApp." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
     ],
   }),
