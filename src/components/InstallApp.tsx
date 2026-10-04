@@ -144,7 +144,7 @@ export function InstallApp() {
   if (!mobile || dismissed || isInstalled) return null;
 
   return (
-    <aside className="fixed inset-x-3 bottom-3 z-[60] mx-auto flex max-w-lg items-center gap-3 rounded-lg border border-border bg-background p-3 text-foreground shadow-lg md:hidden">
+    <aside className="fixed inset-x-3 bottom-20 z-[60] mx-auto flex max-w-lg items-center gap-3 rounded-lg border border-border bg-background p-3 text-foreground shadow-lg md:hidden">
       <img src="/icon-192.png" alt="" width={44} height={44} className="h-11 w-11 rounded-md" />
       <div className="min-w-0 flex-1">
         <p className="font-display text-sm font-bold">Remo Collections</p>
