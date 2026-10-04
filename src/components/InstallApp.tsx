@@ -106,6 +106,7 @@ export function InstallApp() {
   const { canPrompt, installed: isInstalled } = useInstallState();
   const [mobile, setMobile] = useState(false);
   const [dismissed, setDismissed] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     const onBeforeInstall = (event: Event) => {
