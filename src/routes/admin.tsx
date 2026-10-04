@@ -62,6 +62,8 @@ export const Route = createFileRoute("/admin")({
       { name: "description", content: "Private admin dashboard for Remo Collections store management." },
       { property: "og:title", content: "Admin Panel — Remo Collections" },
       { property: "og:description", content: "Private admin dashboard." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),

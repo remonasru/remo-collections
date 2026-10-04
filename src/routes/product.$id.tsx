@@ -23,6 +23,8 @@ export const Route = createFileRoute("/product/$id")({
       },
       { property: "og:title", content: "Product Details — Remo Collections" },
       { property: "og:description", content: "Sizes, reviews and pricing at Remo Collections." },
+      { property: "og:type", content: "product" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ProductPage,

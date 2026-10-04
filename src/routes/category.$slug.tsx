@@ -33,6 +33,8 @@ export const Route = createFileRoute("/category/$slug")({
         },
         { property: "og:title", content: `${CATEGORY_LABELS[c]} — Remo Collections` },
         { property: "og:description", content: `Shop trending ${CATEGORY_LABELS[c]} online.` },
+        { property: "og:type", content: "website" },
+        { name: "twitter:card", content: "summary_large_image" },
       ],
     };
   },
