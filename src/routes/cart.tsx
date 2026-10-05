@@ -152,7 +152,7 @@ function CartPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8">
+    <div className="mx-auto box-border w-full max-w-6xl overflow-x-hidden px-4 py-6 sm:py-8">
       <h1 className="font-display text-2xl font-bold">Shopping Cart</h1>
 
       {done && (
@@ -194,14 +194,17 @@ function CartPage() {
           </Link>
         </p>
       ) : (
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <div className="space-y-4 lg:col-span-2">
+        <div className="mt-6 grid w-full max-w-full grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="min-w-0 space-y-4 lg:col-span-2">
             {rows.map(({ item, product }) => (
-              <div key={item.id} className="flex gap-4 rounded-xl border border-border bg-card p-3 shadow-card">
+              <div
+                key={item.id}
+                className="grid w-full max-w-full grid-cols-[5rem_minmax(0,1fr)] gap-3 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-card sm:grid-cols-[6rem_minmax(0,1fr)_auto] sm:gap-4"
+              >
                 <Link
                   to="/product/$id"
                   params={{ id: product!.id }}
-                  className="h-28 w-24 shrink-0 overflow-hidden rounded-md bg-secondary"
+                  className="h-24 w-20 shrink-0 overflow-hidden rounded-md bg-secondary sm:h-28 sm:w-24"
                 >
                   <ProductImage product={product!} />
                 </Link>
@@ -209,8 +212,8 @@ function CartPage() {
                   <p className="truncate font-semibold">{product!.title}</p>
                   <p className="text-xs text-muted-foreground">Size: {item.size}</p>
                   <p className="mt-1 font-display font-bold">{inr(product!.price)}</p>
-                  <div className="mt-2 flex items-center gap-3">
-                    <div className="flex items-center rounded-md border border-input">
+                  <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex shrink-0 items-center rounded-md border border-input">
                       <button
                         type="button"
                         aria-label="Decrease quantity"
@@ -232,26 +235,28 @@ function CartPage() {
                     <button
                       type="button"
                       onClick={() => removeFromCart(item.id)}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-destructive"
+                      className="inline-flex min-w-0 items-center gap-1 text-xs font-semibold text-destructive"
                     >
                       <Trash2 className="h-4 w-4" /> Remove
                     </button>
                   </div>
                 </div>
-                <p className="font-display font-bold">{inr(product!.price * item.qty)}</p>
+                <p className="col-start-2 truncate font-display font-bold sm:col-start-auto sm:shrink-0">
+                  {inr(product!.price * item.qty)}
+                </p>
               </div>
             ))}
           </div>
 
-          <aside className="h-fit rounded-xl border border-border bg-card p-5 shadow-card">
+          <aside className="h-fit min-w-0 w-full max-w-full overflow-hidden rounded-xl border border-border bg-card p-4 shadow-card sm:p-5">
             <h2 className="font-display text-lg font-bold">Price Details</h2>
             <div className="mt-4 space-y-2 text-sm">
               <Row label={`Items (${rows.reduce((a, r) => a + r.item.qty, 0)})`} value={inr(subtotal)} />
               <Row label="Delivery" value="Free" />
               {applied && (
-                <div className="flex justify-between text-success">
-                  <span className="font-semibold">Coupon Discount ({applied.coupon.code})</span>
-                  <span className="font-semibold">-{inr(discount)}</span>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-success">
+                  <span className="min-w-0 font-semibold">Coupon Discount ({applied.coupon.code})</span>
+                  <span className="shrink-0 font-semibold">-{inr(discount)}</span>
                 </div>
               )}
               <div className="border-t border-border pt-3">
@@ -261,9 +266,9 @@ function CartPage() {
 
             <div className="mt-4 rounded-md border border-dashed border-input p-3">
               {applied ? (
-                <div className="flex items-center justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-bold text-success">{applied.coupon.code} applied</p>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-success">{applied.coupon.code} applied</p>
                     <p className="text-xs text-muted-foreground">You saved {inr(discount)}</p>
                   </div>
                   <button
@@ -280,7 +285,7 @@ function CartPage() {
                   <p className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
                     Have a Promo/Coupon Code?
                   </p>
-                  <div className="mt-2 flex gap-2">
+                  <div className="mt-2 grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2">
                     <input
                       value={codeInput}
                       onChange={(e) => {
@@ -327,10 +332,10 @@ function CartPage() {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/50 p-0 sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex max-w-full items-end justify-center overflow-x-hidden bg-foreground/50 p-4 sm:items-center">
           <form
             onSubmit={confirmOrder}
-            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-card p-5 shadow-float sm:rounded-2xl"
+            className="box-border max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-x-hidden overflow-y-auto rounded-xl bg-card p-4 shadow-float sm:p-5"
           >
             <h2 className="font-display text-xl font-bold">Delivery Details</h2>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -364,7 +369,7 @@ function CartPage() {
                 />
               </Field>
               <Field label="Payment Method">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid w-full max-w-full grid-cols-1 gap-3 sm:grid-cols-2">
                   {(
                     [
                       ["COD", "Cash on Delivery", "Pay when it arrives"],
@@ -376,7 +381,7 @@ function CartPage() {
                       type="button"
                       onClick={() => setForm({ ...form, payment: value })}
                       aria-pressed={form.payment === value}
-                      className={`rounded-md border px-3 py-2.5 text-left text-sm font-bold ${
+                      className={`box-border w-full max-w-full rounded-md border px-3 py-2.5 text-left text-sm font-bold ${
                         form.payment === value
                           ? "border-primary bg-primary text-primary-foreground"
                           : "border-input bg-background"
@@ -402,21 +407,21 @@ function CartPage() {
               </Field>
 
             </div>
-            <div className="mt-4 flex items-center justify-between rounded-md bg-secondary px-3 py-2 text-sm font-bold">
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md bg-secondary px-3 py-2 text-sm font-bold">
               <span>Total</span>
               <span>{inr(total)}</span>
             </div>
-            <div className="mt-4 flex gap-3">
+            <div className="mt-4 grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="flex-1 rounded-md border border-input px-4 py-3 text-sm font-semibold"
+                className="box-border w-full rounded-md border border-input px-4 py-3 text-sm font-semibold"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="flex-1 rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
+                className="box-border w-full rounded-md bg-primary px-4 py-3 text-sm font-bold text-primary-foreground"
               >
                 {form.payment === "UPI" ? `Pay via UPI · ${inr(total)}` : "Confirm Order"}
               </button>
@@ -430,16 +435,18 @@ function CartPage() {
 
 function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
-    <div className={`flex justify-between ${bold ? "font-display text-base font-bold" : ""}`}>
-      <span className={bold ? "" : "text-muted-foreground"}>{label}</span>
-      <span>{value}</span>
+    <div
+      className={`grid grid-cols-[minmax(0,1fr)_auto] gap-3 ${bold ? "font-display text-base font-bold" : ""}`}
+    >
+      <span className={`min-w-0 ${bold ? "" : "text-muted-foreground"}`}>{label}</span>
+      <span className="shrink-0">{value}</span>
     </div>
   );
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="block">
+    <label className="block w-full max-w-full">
       <span className="mb-1 block text-xs font-bold uppercase tracking-wide text-muted-foreground">
         {label}
       </span>
