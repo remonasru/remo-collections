@@ -11,3 +11,4 @@
 
 ## Architecture Rules
 - Use manifest-only metadata for app installation; add app-shell service workers only when offline use is explicitly requested, because installed-app support does not require offline caching.
+- Persist single-product admin edits through an admin-checked, product-ID-scoped server operation so editing one item cannot replace or delete other catalog records.

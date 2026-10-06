@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 
 export type ProductInput = {
   id: string;
@@ -20,6 +21,41 @@ export type ProductInput = {
 
 const isUuid = (v: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
+
+const productImageSchema = z
+  .string()
+  .min(1)
+  .max(8_000_000)
+  .refine((value) => {
+    if (/^data:image\/(?:jpeg|png|webp|gif|svg\+xml);base64,[a-z0-9+/=]+$/i.test(value)) return true;
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }, "Images must be an HTTP(S) URL or an image data URL.");
+
+const productEditSchema = z.object({
+  id: z.string().uuid(),
+  title: z.string().trim().min(1).max(160),
+  category: z.enum(["Men", "Women", "Kids", "Accessories"]),
+  subCategory: z.string().trim().min(1).max(120),
+  price: z.number().finite().positive().max(1_000_000),
+  mrp: z.number().finite().positive().max(1_000_000),
+  description: z.string().max(5000),
+  sizes: z.array(z.string().min(1).max(20)).max(12),
+  colors: z.array(z.string().min(1).max(40)).max(20),
+  fabric: z.string().max(80),
+  recipient: z.string().max(80),
+  occasion: z.string().max(80),
+  images: z.array(productImageSchema).min(1).max(7).refine(
+    (images) => images.reduce((total, image) => total + image.length, 0) <= 20_000_000,
+    "The combined image data is too large.",
+  ),
+  inStock: z.boolean(),
+  createdAt: z.number().finite().nonnegative(),
+});
 
 export const adminLogin = createServerFn({ method: "POST" })
   .inputValidator((input: { user: string; pass: string }) => input)
@@ -66,6 +102,43 @@ export const saveCatalog = createServerFn({ method: "POST" })
     if (del.error) throw new Error(del.error.message);
 
     return { ok: true, count: rows.length };
+  });
+
+/** Updates one existing product without replacing or deleting other catalog entries. */
+export const saveProduct = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string; product: ProductInput }) =>
+    z.object({ pass: z.string().min(1), product: productEditSchema }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    const { assertAdmin } = await import("./admin.server");
+    assertAdmin(data.pass);
+    if (!isUuid(data.product.id)) throw new Error("Invalid product ID.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: updated, error } = await supabaseAdmin
+      .from("products")
+      .update({
+        title: data.product.title,
+        category: data.product.category,
+        sub_category: data.product.subCategory,
+        price: data.product.price,
+        mrp: data.product.mrp,
+        description: data.product.description,
+        sizes: data.product.sizes,
+        colors: data.product.colors,
+        fabric: data.product.fabric,
+        recipient: data.product.recipient,
+        occasion: data.product.occasion,
+        images: data.product.images,
+        in_stock: data.product.inStock,
+      })
+      .eq("id", data.product.id)
+      .select("id")
+      .maybeSingle();
+
+    if (error) throw new Error(error.message);
+    if (!updated) throw new Error("Product no longer exists. Refresh the inventory and try again.");
+    return { ok: true, id: updated.id };
   });
 
 export const listOrders = createServerFn({ method: "POST" })
