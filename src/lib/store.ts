@@ -7,6 +7,7 @@ import {
   saveCatalog,
   saveApkUrl,
   saveCoupons,
+  saveProduct,
   updateOrderStatus,
   type ProductInput,
 } from "@/lib/catalog.functions";
@@ -512,6 +513,18 @@ export function updateProduct(id: string, patch: Partial<Product>) {
   stage((s) => ({
     ...s,
     products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+  }));
+}
+
+/** Applies a product that has already been saved through the ID-scoped admin operation. */
+export function applySavedProduct(product: Product) {
+  setState((s) => ({
+    ...s,
+    products: s.products.map((current) =>
+      current.id === product.id
+        ? { ...product, reviews: current.reviews, createdAt: current.createdAt }
+        : current,
+    ),
   }));
 }
 
