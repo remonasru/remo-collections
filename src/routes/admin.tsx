@@ -15,7 +15,6 @@ import {
   addCoupon,
   addProduct,
   ALL_SIZES,
-  applySavedProduct,
   CATEGORIES,
   COLORS,
   commitChanges,
@@ -44,7 +43,6 @@ import {
   type Coupon,
   type OrderStatus,
 } from "@/lib/store";
-import { saveProduct } from "@/lib/catalog.functions";
 
 const SESSION_KEY = "remo-admin-session";
 
@@ -865,8 +863,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
       return;
     }
 
-    const updated: Product = {
-      ...product,
+    updateProduct(product.id, {
       title: cleanTitle,
       category,
       subCategory: subCategory.trim(),
@@ -880,41 +877,11 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
       occasion,
       images,
       inStock,
-    };
-    setSaving(true);
-    try {
-      const pass = sessionStorage.getItem(SESSION_KEY) ?? "";
-      await saveProduct({
-        data: {
-          pass,
-          product: {
-            id: updated.id,
-            title: updated.title,
-            category: updated.category,
-            subCategory: updated.subCategory,
-            price: updated.price,
-            mrp: updated.mrp,
-            description: updated.description,
-            sizes: updated.sizes,
-            colors: updated.colors,
-            fabric: updated.fabric,
-            recipient: updated.recipient,
-            occasion: updated.occasion,
-            images: updated.images,
-            inStock: updated.inStock,
-            createdAt: updated.createdAt,
-          },
-        },
-      });
-      applySavedProduct(updated);
-      toast.success("Product updated successfully!");
-      onClose();
-    } catch (error) {
-      console.error("[Admin] Product update failed", error);
-      toast.error(error instanceof Error ? error.message : "Could not save this product. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+    });
+    toast.success("Product updated successfully!", {
+      description: "Click Save Changes to publish this update.",
+    });
+    onClose();
   }
 
   const subcategories = SUBCATEGORIES[category];
@@ -1070,8 +1037,8 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
         </form>
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button type="submit" form="edit-product-form" disabled={saving || imageBusy}>
-            <Save aria-hidden="true" /> {saving ? "Saving…" : "Save Changes"}
+          <Button type="submit" form="edit-product-form" disabled={imageBusy}>
+            <Save aria-hidden="true" /> Save Changes
           </Button>
         </div>
       </DialogContent>
