@@ -927,7 +927,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
           <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>Update product details, stock, and gallery images.</DialogDescription>
         </DialogHeader>
-        <form onSubmit={submit} className="min-h-0 overflow-y-auto p-4 sm:p-6">
+        <form id="edit-product-form" onSubmit={submit} className="min-h-0 overflow-y-auto p-4 sm:p-6">
           <div className="space-y-4">
             <L label="Product Title">
               <input required maxLength={160} value={title} onChange={(event) => setTitle(event.target.value)} className={inputCls} />
