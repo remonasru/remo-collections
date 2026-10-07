@@ -839,6 +839,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saving || imageBusy) return;
     const cleanTitle = title.trim();
     const nextPrice = Number(price);
     const nextMrp = Number(mrp || price);
@@ -863,6 +864,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
       return;
     }
 
+    setSaving(true);
     updateProduct(product.id, {
       title: cleanTitle,
       category,
