@@ -68,6 +68,61 @@ export const saveCatalog = createServerFn({ method: "POST" })
     return { ok: true, count: rows.length };
   });
 
+const PRODUCT_UPDATE_TIMEOUT_MS = 30_000;
+
+function isTransientUpdateError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /timeout|timed out|abort|network|fetch failed|502|503|504|cold start/i.test(message);
+}
+
+/**
+ * Updates a single product row, sending ONLY the columns that actually changed.
+ * Heavy fields (base64 images, arrays) are skipped when unmodified, and the
+ * update is retried once on transient network/timeout errors.
+ */
+export const saveProduct = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string; id: string; patch: Record<string, unknown> }) => input)
+  .handler(async ({ data }) => {
+    const { assertAdmin } = await import("./admin.server");
+    assertAdmin(String(data.pass ?? ""));
+    const id = String(data.id ?? "");
+    if (!isUuid(id)) throw new Error("Invalid product id.");
+
+    const allowed = new Set([
+      "title", "category", "sub_category", "price", "mrp", "description",
+      "sizes", "colors", "fabric", "recipient", "occasion", "images", "in_stock",
+    ]);
+    const patch: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(data.patch ?? {})) {
+      if (allowed.has(key) && value !== undefined) patch[key] = value;
+    }
+    if (!Object.keys(patch).length) return { ok: true, skipped: true };
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const { data: row, error } = await supabaseAdmin
+          .from("products")
+          .update(patch)
+          .eq("id", id)
+          .select("id")
+          .single();
+        if (error) throw new Error(error.message);
+        return { ok: true, id: row?.id ?? id };
+      } catch (error) {
+        lastError = error;
+        if (attempt === 0 && isTransientUpdateError(error)) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          continue;
+        }
+        break;
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error("Product update failed.");
+  });
+
 export const listOrders = createServerFn({ method: "POST" })
   .inputValidator((input: { pass: string }) => input)
   .handler(async ({ data }) => {

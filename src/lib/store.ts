@@ -515,6 +515,14 @@ export function updateProduct(id: string, patch: Partial<Product>) {
   }));
 }
 
+/** Applies a product patch locally without staging — used after a direct single-row save. */
+export function applySavedProduct(id: string, patch: Partial<Product>) {
+  setState((s) => ({
+    ...s,
+    products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)),
+  }));
+}
+
 export function deleteProduct(id: string) {
   stage((s) => ({
     ...s,
