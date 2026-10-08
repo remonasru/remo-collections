@@ -864,8 +864,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
       return;
     }
 
-    setSaving(true);
-    updateProduct(product.id, {
+    const next: Partial<Product> = {
       title: cleanTitle,
       category,
       subCategory: subCategory.trim(),
@@ -879,11 +878,43 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
       occasion,
       images,
       inStock,
-    });
-    toast.success("Product updated successfully!", {
-      description: "Click Save Changes to publish this update.",
-    });
-    onClose();
+    };
+
+    // Build a DB patch containing ONLY the columns that actually changed,
+    // so simple price/stock edits never re-send heavy base64 images.
+    const columnMap: Record<string, keyof Product> = {
+      title: "title", category: "category", sub_category: "subCategory",
+      price: "price", mrp: "mrp", description: "description", sizes: "sizes",
+      colors: "colors", fabric: "fabric", recipient: "recipient",
+      occasion: "occasion", images: "images", in_stock: "inStock",
+    };
+    const patch: Record<string, unknown> = {};
+    for (const [column, key] of Object.entries(columnMap)) {
+      const value = next[key];
+      const before = product[key];
+      const changed = Array.isArray(value)
+        ? JSON.stringify(value) !== JSON.stringify(before)
+        : value !== before;
+      if (changed) patch[column] = value;
+    }
+
+    setSaving(true);
+    // Optimistic UI: reflect the edit instantly, roll back if the save fails.
+    applySavedProduct(product.id, next);
+    try {
+      if (Object.keys(patch).length) {
+        await saveProduct({ data: { pass: adminPass, id: product.id, patch } });
+      }
+      toast.success("Product updated successfully!");
+      onClose();
+    } catch (error) {
+      applySavedProduct(product.id, product);
+      toast.error("Could not save this product.", {
+        description: describeSaveError(error),
+      });
+    } finally {
+      setSaving(false);
+    }
   }
 
   const subcategories = SUBCATEGORIES[category];
