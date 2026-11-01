@@ -26,6 +26,7 @@ import {
   loadAdminCoupons,
   updateCoupon,
   FABRICS,
+  getAdminPass,
   inr,
   loadOrders,
   OCCASIONS,
@@ -905,7 +906,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
     applySavedProduct(product.id, next);
     try {
       if (Object.keys(patch).length) {
-        await saveProduct({ data: { pass: adminPass, id: product.id, patch } });
+        await saveProduct({ data: { pass: getAdminPass(), id: product.id, patch } });
       }
       toast.success("Product updated successfully!");
       onClose();
