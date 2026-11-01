@@ -11,9 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { saveProduct } from "@/lib/catalog.functions";
 import {
   addCoupon,
   addProduct,
+  applySavedProduct,
   ALL_SIZES,
   CATEGORIES,
   COLORS,

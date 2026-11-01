@@ -410,6 +410,10 @@ export function setAdminPass(pass: string) {
   adminPass = pass;
 }
 
+export function getAdminPass(): string {
+  return adminPass;
+}
+
 export async function verifyAdminLogin(user: string, pass: string): Promise<boolean> {
   const res = await adminLogin({ data: { user, pass } });
   if (res.ok) adminPass = pass;
