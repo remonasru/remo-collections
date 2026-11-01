@@ -1074,8 +1074,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
           <Button type="submit" form="edit-product-form" disabled={saving || imageBusy}>
-            {saving ? "Saving…" : "Save Changes"}
-            <Save aria-hidden="true" /> Save Changes
+            <Save aria-hidden="true" /> {saving ? "Saving…" : "Save Changes"}
           </Button>
         </div>
       </DialogContent>
