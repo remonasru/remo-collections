@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import type { TablesUpdate } from "@/integrations/supabase/types";
 
 export type ProductInput = {
   id: string;
@@ -92,9 +93,11 @@ export const saveProduct = createServerFn({ method: "POST" })
       "title", "category", "sub_category", "price", "mrp", "description",
       "sizes", "colors", "fabric", "recipient", "occasion", "images", "in_stock",
     ]);
-    const patch: Record<string, unknown> = {};
+    const patch: TablesUpdate<"products"> = {};
     for (const [key, value] of Object.entries(data.patch ?? {})) {
-      if (allowed.has(key) && value !== undefined) patch[key] = value;
+      if (allowed.has(key) && value !== undefined) {
+        (patch as Record<string, unknown>)[key] = value;
+      }
     }
     if (!Object.keys(patch).length) return { ok: true, skipped: true };
 

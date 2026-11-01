@@ -11,9 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { saveProduct } from "@/lib/catalog.functions";
 import {
   addCoupon,
   addProduct,
+  applySavedProduct,
   ALL_SIZES,
   CATEGORIES,
   COLORS,
@@ -24,6 +26,7 @@ import {
   loadAdminCoupons,
   updateCoupon,
   FABRICS,
+  getAdminPass,
   inr,
   loadOrders,
   OCCASIONS,
@@ -903,7 +906,7 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
     applySavedProduct(product.id, next);
     try {
       if (Object.keys(patch).length) {
-        await saveProduct({ data: { pass: adminPass, id: product.id, patch } });
+        await saveProduct({ data: { pass: getAdminPass(), id: product.id, patch } });
       }
       toast.success("Product updated successfully!");
       onClose();
@@ -1070,8 +1073,8 @@ function EditProductDialog({ product, onClose }: { product: Product; onClose: ()
         </form>
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-background px-4 py-3 sm:flex-row sm:justify-end sm:px-6">
           <Button type="button" variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button type="submit" form="edit-product-form" disabled={imageBusy}>
-            <Save aria-hidden="true" /> Save Changes
+          <Button type="submit" form="edit-product-form" disabled={saving || imageBusy}>
+            <Save aria-hidden="true" /> {saving ? "Saving…" : "Save Changes"}
           </Button>
         </div>
       </DialogContent>
