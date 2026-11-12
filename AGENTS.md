@@ -11,4 +11,4 @@
 
 ## Architecture Rules
 - Use manifest-only metadata for app installation; add app-shell service workers only when offline use is explicitly requested, because installed-app support does not require offline caching.
-- Keep admin catalog edits staged until the existing global Save Changes action commits them, so staff can review or discard a complete draft before publishing.
+- Save product additions, edits, stock changes, and deletions immediately by product ID; keep coupon and APK-setting drafts staged for the shared Save Changes action to avoid catalog-wide writes.

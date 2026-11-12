@@ -4,11 +4,11 @@ import {
   adminLogin,
   listCoupons,
   listOrders,
-  saveCatalog,
+  createProductRecord,
+  deleteProductRecord,
   saveApkUrl,
   saveCoupons,
   updateOrderStatus,
-  type ProductInput,
 } from "@/lib/catalog.functions";
 
 export type Category = "Men" | "Women" | "Kids" | "Accessories";
@@ -446,24 +446,6 @@ function stage(updater: (s: StoreState) => StoreState) {
 export async function commitChanges(): Promise<void> {
   // Safety: never publish an empty catalogue before the live one has loaded.
   if (state.loading) throw new Error("Catalogue is still loading — please try again in a moment.");
-  const products: ProductInput[] = state.products.map((p) => ({
-    id: p.id,
-    title: p.title,
-    category: p.category,
-    subCategory: p.subCategory,
-    price: p.price,
-    mrp: p.mrp,
-    description: p.description,
-    sizes: p.sizes,
-    colors: p.colors,
-    fabric: p.fabric,
-    recipient: p.recipient,
-    occasion: p.occasion,
-    images: p.images,
-    inStock: p.inStock,
-    createdAt: p.createdAt,
-  }));
-  await saveCatalog({ data: { pass: adminPass, products } });
   if (couponsLoaded) {
     await saveCoupons({
       data: {
@@ -505,18 +487,31 @@ export function useDirty(): boolean {
 }
 
 /* ---------- products ---------- */
-export function addProduct(p: Omit<Product, "id" | "reviews" | "createdAt">) {
-  stage((s) => ({
-    ...s,
-    products: [{ ...p, id: uid(), reviews: [], createdAt: Date.now() }, ...s.products],
-  }));
-}
-
-export function updateProduct(id: string, patch: Partial<Product>) {
-  stage((s) => ({
-    ...s,
-    products: s.products.map((p) => (p.id === id ? { ...p, ...patch } : p)),
-  }));
+export async function addProduct(p: Omit<Product, "id" | "reviews" | "createdAt">) {
+  const product: Product = { ...p, id: uid(), reviews: [], createdAt: Date.now() };
+  await createProductRecord({
+    data: {
+      pass: adminPass,
+      product: {
+        id: product.id,
+        title: product.title,
+        category: product.category,
+        subCategory: product.subCategory,
+        price: product.price,
+        mrp: product.mrp,
+        description: product.description,
+        sizes: product.sizes,
+        colors: product.colors,
+        fabric: product.fabric,
+        recipient: product.recipient,
+        occasion: product.occasion,
+        images: product.images,
+        inStock: product.inStock,
+        createdAt: product.createdAt,
+      },
+    },
+  });
+  setState((s) => ({ ...s, products: [product, ...s.products] }));
 }
 
 /** Applies a product patch locally without staging — used after a direct single-row save. */
@@ -527,11 +522,9 @@ export function applySavedProduct(id: string, patch: Partial<Product>) {
   }));
 }
 
-export function deleteProduct(id: string) {
-  stage((s) => ({
-    ...s,
-    products: s.products.filter((p) => p.id !== id),
-  }));
+export async function deleteProduct(id: string) {
+  await deleteProductRecord({ data: { pass: adminPass, id } });
+  setState((s) => ({ ...s, products: s.products.filter((p) => p.id !== id) }));
   setBasket((s) => ({
     ...s,
     cart: s.cart.filter((c) => c.productId !== id),

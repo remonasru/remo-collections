@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Check, ChevronLeft, ChevronRight, ImagePlus, LogOut, Pencil, Save, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, ImagePlus, LoaderCircle, LogOut, Pencil, Save, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { ProductImage } from "@/components/ProductCard";
@@ -266,6 +266,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab === "install" && <InstallSettings />}
       </div>
 
+      {tab !== "inventory" && (
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <p className="text-sm font-semibold">
@@ -309,6 +310,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -401,8 +403,11 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
     });
   }
 
-  function submit(e: React.FormEvent) {
+  const [savingProduct, setSavingProduct] = useState(false);
+
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (savingProduct) return;
     const p = Number(price);
     const m = Number(mrp || price);
     if (!title.trim() || !p || p <= 0) {
@@ -417,31 +422,39 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
       toast.error("Please upload at least 1 product photo");
       return;
     }
-    addProduct({
-      title: title.trim(),
-      category,
-      subCategory,
-      price: p,
-      mrp: m,
-      description: description.trim(),
-      sizes,
-      colors,
-      fabric,
-      recipient,
-      occasion,
-      images,
-      inStock: true,
-    });
-    toast.success("Product added");
-    setTitle("");
-    setPrice("");
-    setMrp("");
-    setDescription("");
-    setColors([]);
-    setImages([]);
-    setRecipient("");
-    setOccasion("");
-    onDone();
+    setSavingProduct(true);
+    try {
+      await addProduct({
+        title: title.trim(),
+        category,
+        subCategory,
+        price: p,
+        mrp: m,
+        description: description.trim(),
+        sizes,
+        colors,
+        fabric,
+        recipient,
+        occasion,
+        images,
+        inStock: true,
+      });
+      toast.success("Product added");
+      setTitle("");
+      setPrice("");
+      setMrp("");
+      setDescription("");
+      setColors([]);
+      setImages([]);
+      setRecipient("");
+      setOccasion("");
+      onDone();
+    } catch (error) {
+      console.error("[Admin] Product creation failed", error);
+      toast.error("Could not add product.", { description: describeSaveError(error) });
+    } finally {
+      setSavingProduct(false);
+    }
   }
 
 
@@ -619,8 +632,8 @@ function AddProductForm({ onDone }: { onDone: () => void }) {
           ))}
         </div>
       )}
-      <button type="submit" className="rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground">
-        Add Product
+      <button type="submit" disabled={savingProduct} className="rounded-md bg-primary px-6 py-3 text-sm font-bold text-primary-foreground disabled:opacity-60">
+        {savingProduct ? "Adding…" : "Add Product"}
       </button>
     </form>
   );
@@ -634,70 +647,7 @@ function Inventory() {
       <div className="space-y-3">
         {products.length === 0 && <p className="text-muted-foreground">No products yet.</p>}
         {products.map((p) => (
-          <div
-            key={p.id}
-            className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3 shadow-card"
-          >
-            <div className="h-20 w-16 shrink-0 overflow-hidden rounded-md bg-secondary">
-              <ProductImage product={p} />
-            </div>
-            <div className="min-w-40 flex-1">
-              <p className="font-semibold">{p.title}</p>
-              <p className="text-xs text-muted-foreground">
-                {p.category} › {p.subCategory || "No sub-category"} ·{" "}
-                {p.recipient || p.occasion
-                  ? [p.recipient, p.occasion].filter(Boolean).join(" · ")
-                  : p.fabric || "—"}{" "}
-                · {p.sizes.join(", ") || "No sizes"} · {p.reviews.length} reviews
-              </p>
-            </div>
-            <label className="text-xs font-bold uppercase text-muted-foreground">
-              Price
-              <input
-                key={`${p.id}-${p.price}`}
-                defaultValue={p.price}
-                onBlur={(e) => {
-                  const v = Number(e.target.value);
-                  if (v > 0) updateProduct(p.id, { price: v });
-                }}
-                inputMode="numeric"
-                className="ml-2 w-24 rounded-md border border-input bg-background px-2 py-1.5 text-sm font-normal normal-case text-foreground"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={() => updateProduct(p.id, { inStock: !p.inStock })}
-              className={`rounded-md px-3 py-2 text-xs font-bold ${
-                p.inStock ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"
-              }`}
-            >
-              {p.inStock ? "In Stock" : "Out of Stock"}
-            </button>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                aria-label={`Edit ${p.title}`}
-                title="Edit product"
-                onClick={() => setEditingProduct(p)}
-              >
-                <Pencil aria-hidden="true" />
-              </Button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (confirm(`Delete "${p.title}"?`)) {
-                    deleteProduct(p.id);
-                    toast.success("Product deleted");
-                  }
-                }}
-                className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-2 text-xs font-bold text-destructive"
-              >
-                <Trash2 className="h-4 w-4" /> Delete
-              </button>
-            </div>
-          </div>
+          <InventoryProductCard key={p.id} product={p} onEdit={() => setEditingProduct(p)} />
         ))}
       </div>
       {editingProduct && (
@@ -708,6 +658,121 @@ function Inventory() {
         />
       )}
     </>
+  );
+}
+
+function InventoryProductCard({ product, onEdit }: { product: Product; onEdit: () => void }) {
+  const [price, setPrice] = useState(String(product.price));
+  const [inStock, setInStock] = useState(product.inStock);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const hasChanges = Number(price) !== product.price || inStock !== product.inStock;
+
+  useEffect(() => {
+    setPrice(String(product.price));
+    setInStock(product.inStock);
+  }, [product.price, product.inStock]);
+
+  async function handleSaveProduct(productId: string, newStock: boolean, newPrice: number) {
+    if (saving) return;
+    if (!Number.isFinite(newPrice) || newPrice <= 0) {
+      toast.error("Enter a valid price greater than zero.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveProduct({
+        data: {
+          pass: getAdminPass(),
+          id: productId,
+          patch: { price: newPrice, in_stock: newStock },
+        },
+      });
+      applySavedProduct(productId, { price: newPrice, inStock: newStock });
+      toast.success(`${product.title} saved successfully.`);
+    } catch (error) {
+      console.error(`[Admin] Product save failed for ${productId}`, error);
+      toast.error(`Could not save ${product.title}.`, { description: describeSaveError(error) });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteProduct() {
+    if (deleting || !confirm(`Delete "${product.title}"?`)) return;
+    setDeleting(true);
+    try {
+      await deleteProduct(product.id);
+      toast.success("Product deleted");
+    } catch (error) {
+      console.error(`[Admin] Product deletion failed for ${product.id}`, error);
+      toast.error(`Could not delete ${product.title}.`, { description: describeSaveError(error) });
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-3 shadow-card">
+      <div className="h-20 w-16 shrink-0 overflow-hidden rounded-md bg-secondary">
+        <ProductImage product={product} />
+      </div>
+      <div className="min-w-40 flex-1">
+        <p className="font-semibold">{product.title}</p>
+        <p className="text-xs text-muted-foreground">
+          {product.category} › {product.subCategory || "No sub-category"} ·{" "}
+          {product.recipient || product.occasion
+            ? [product.recipient, product.occasion].filter(Boolean).join(" · ")
+            : product.fabric || "—"}{" "}
+          · {product.sizes.join(", ") || "No sizes"} · {product.reviews.length} reviews
+        </p>
+      </div>
+      <label className="text-xs font-bold uppercase text-muted-foreground">
+        Price
+        <input
+          type="number"
+          min="0.01"
+          step="0.01"
+          value={price}
+          onChange={(event) => setPrice(event.target.value)}
+          inputMode="decimal"
+          aria-label={`Price for ${product.title}`}
+          className="ml-2 w-24 rounded-md border border-input bg-background px-2 py-1.5 text-sm font-normal normal-case text-foreground"
+        />
+      </label>
+      <button
+        type="button"
+        aria-pressed={inStock}
+        onClick={() => setInStock((current) => !current)}
+        className={`rounded-md px-3 py-2 text-xs font-bold ${
+          inStock ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"
+        }`}
+      >
+        {inStock ? "In Stock" : "Out of Stock"}
+      </button>
+      <div className="flex items-center gap-2">
+        <Button
+          type="button"
+          disabled={!hasChanges || saving || deleting}
+          onClick={() => void handleSaveProduct(product.id, inStock, Number(price))}
+          className="gap-2"
+        >
+          {saving ? <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="h-4 w-4" aria-hidden="true" />}
+          {saving ? "Saving…" : "Save Product"}
+        </Button>
+        <Button type="button" variant="outline" size="icon" aria-label={`Edit ${product.title}`} title="Edit product" onClick={onEdit} disabled={saving || deleting}>
+          <Pencil aria-hidden="true" />
+        </Button>
+        <button
+          type="button"
+          disabled={deleting || saving}
+          onClick={() => void handleDeleteProduct()}
+          className="inline-flex items-center gap-1 rounded-md border border-input px-3 py-2 text-xs font-bold text-destructive disabled:opacity-50"
+        >
+          {deleting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} {deleting ? "Deleting…" : "Delete"}
+        </button>
+      </div>
+    </div>
   );
 }
 

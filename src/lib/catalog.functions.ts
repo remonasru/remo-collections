@@ -29,44 +29,57 @@ export const adminLogin = createServerFn({ method: "POST" })
     return { ok: verifyAdmin(String(data.user ?? ""), String(data.pass ?? "")) };
   });
 
-/** Replaces the whole catalog with the admin's staged snapshot. */
-export const saveCatalog = createServerFn({ method: "POST" })
-  .inputValidator((input: { pass: string; products: ProductInput[] }) => input)
+/** Inserts one new catalog record without syncing or replacing other products. */
+export const createProductRecord = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string; product: ProductInput }) => input)
   .handler(async ({ data }) => {
     const { assertAdmin } = await import("./admin.server");
     assertAdmin(String(data.pass ?? ""));
+    const product = data.product;
+    if (!isUuid(product.id)) throw new Error("Invalid product id.");
+    if (!String(product.title ?? "").trim() || !Number.isFinite(Number(product.price)) || Number(product.price) <= 0) {
+      throw new Error("Enter a product title and a valid price.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const rows = (data.products ?? []).map((p) => ({
-      id: isUuid(p.id) ? p.id : crypto.randomUUID(),
-      title: p.title,
-      category: p.category,
-      sub_category: p.subCategory ?? "",
-      price: Number(p.price) || 0,
-      mrp: Number(p.mrp) || 0,
-      description: p.description ?? "",
-      sizes: p.sizes ?? [],
-      colors: p.colors ?? [],
-      fabric: p.fabric ?? "",
-      recipient: p.recipient ?? "",
-      occasion: p.occasion ?? "",
-      images: p.images ?? [],
-      in_stock: p.inStock !== false,
-      created_at: new Date(Number(p.createdAt) || Date.now()).toISOString(),
-    }));
+    const { data: row, error } = await supabaseAdmin.from("products").insert({
+      id: product.id,
+      title: product.title.trim(),
+      category: product.category,
+      sub_category: product.subCategory ?? "",
+      price: Number(product.price),
+      mrp: Number(product.mrp) || Number(product.price),
+      description: product.description ?? "",
+      sizes: product.sizes ?? [],
+      colors: product.colors ?? [],
+      fabric: product.fabric ?? "",
+      recipient: product.recipient ?? "",
+      occasion: product.occasion ?? "",
+      images: product.images ?? [],
+      in_stock: product.inStock !== false,
+      created_at: new Date(Number(product.createdAt) || Date.now()).toISOString(),
+    }).select("id").single();
+    if (error) throw new Error(error.message);
+    return { ok: true, id: row.id };
+  });
 
-    const { error: upsertError } = rows.length
-      ? await supabaseAdmin.from("products").upsert(rows)
-      : { error: null };
-    if (upsertError) throw new Error(upsertError.message);
-
-    const keep = rows.map((r) => r.id);
-    const del = keep.length
-      ? await supabaseAdmin.from("products").delete().not("id", "in", `(${keep.join(",")})`)
-      : await supabaseAdmin.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
-    if (del.error) throw new Error(del.error.message);
-
-    return { ok: true, count: rows.length };
+/** Deletes only the selected product row. */
+export const deleteProductRecord = createServerFn({ method: "POST" })
+  .inputValidator((input: { pass: string; id: string }) => input)
+  .handler(async ({ data }) => {
+    const { assertAdmin } = await import("./admin.server");
+    assertAdmin(String(data.pass ?? ""));
+    const id = String(data.id ?? "");
+    if (!isUuid(id)) throw new Error("Invalid product id.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error } = await supabaseAdmin
+      .from("products")
+      .delete()
+      .eq("id", id)
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+    return { ok: true, id: row.id };
   });
 
 const PRODUCT_UPDATE_TIMEOUT_MS = 30_000;
