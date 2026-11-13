@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Download, X } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 
@@ -102,6 +103,7 @@ export function InstallAction({ className = "" }: { className?: string }) {
 }
 
 export function InstallApp() {
+  const pathname = useRouterState({ select: (router) => router.location.pathname });
   const { apkUrl } = useStore();
   const { canPrompt, installed: isInstalled } = useInstallState();
   const [mobile, setMobile] = useState(false);
@@ -141,7 +143,7 @@ export function InstallApp() {
     }
   }, [mobile, canPrompt, isInstalled, apkUrl]);
 
-  if (!mobile || dismissed || isInstalled) return null;
+  if (!mobile || pathname.startsWith("/admin") || dismissed || isInstalled) return null;
 
   return (
     <aside className="fixed inset-x-3 bottom-20 z-[60] mx-auto flex max-w-lg items-center gap-3 rounded-lg border border-border bg-background p-3 text-foreground shadow-lg md:hidden">

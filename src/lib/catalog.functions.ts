@@ -85,8 +85,12 @@ export const deleteProductRecord = createServerFn({ method: "POST" })
 const PRODUCT_UPDATE_TIMEOUT_MS = 30_000;
 
 function isTransientUpdateError(error: unknown): boolean {
+  if (error !== null && typeof error === "object" && "status" in error) {
+    const status = Number(error.status);
+    if ([502, 503, 504, 520].includes(status)) return true;
+  }
   const message = error instanceof Error ? error.message : String(error);
-  return /timeout|timed out|abort|network|fetch failed|502|503|504|cold start/i.test(message);
+  return /timeout|timed out|abort|network|fetch failed|502|503|504|520|cold start/i.test(message);
 }
 
 /**
@@ -118,12 +122,15 @@ export const saveProduct = createServerFn({ method: "POST" })
 
     let lastError: unknown = null;
     for (let attempt = 0; attempt < 2; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), PRODUCT_UPDATE_TIMEOUT_MS);
       try {
         const { data: row, error } = await supabaseAdmin
           .from("products")
           .update(patch)
           .eq("id", id)
           .select("id")
+          .abortSignal(controller.signal)
           .single();
         if (error) throw new Error(error.message);
         return { ok: true, id: row?.id ?? id };
@@ -134,6 +141,8 @@ export const saveProduct = createServerFn({ method: "POST" })
           continue;
         }
         break;
+      } finally {
+        clearTimeout(timeout);
       }
     }
     throw lastError instanceof Error ? lastError : new Error("Product update failed.");

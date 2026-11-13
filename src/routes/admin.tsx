@@ -38,7 +38,6 @@ import {
   SIZES,
   SUBCATEGORIES,
   type Product,
-  updateProduct,
   useDirty,
   useStore,
   verifyAdminLogin,
@@ -211,7 +210,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   }, [dirty]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 pb-28">
+    <div className={`mx-auto max-w-7xl px-4 py-8 ${tab === "inventory" ? "pb-8" : "pb-28"}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-2xl font-extrabold">Admin Dashboard</h1>
         <button
@@ -679,18 +678,24 @@ function InventoryProductCard({ product, onEdit }: { product: Product; onEdit: (
       toast.error("Enter a valid price greater than zero.");
       return;
     }
+    const patch: Record<string, unknown> = {};
+    if (newPrice !== product.price) patch["price"] = newPrice;
+    if (newStock !== product.inStock) patch["in_stock"] = newStock;
+    if (!Object.keys(patch).length) return;
+
     setSaving(true);
+    applySavedProduct(productId, { price: newPrice, inStock: newStock });
     try {
       await saveProduct({
         data: {
           pass: getAdminPass(),
           id: productId,
-          patch: { price: newPrice, in_stock: newStock },
+          patch,
         },
       });
-      applySavedProduct(productId, { price: newPrice, inStock: newStock });
       toast.success(`${product.title} saved successfully.`);
     } catch (error) {
+      applySavedProduct(productId, { price: product.price, inStock: product.inStock });
       console.error(`[Admin] Product save failed for ${productId}`, error);
       toast.error(`Could not save ${product.title}.`, { description: describeSaveError(error) });
     } finally {
