@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductGridSkeleton } from "@/components/ProductGridSkeleton";
+import { LoadMoreProducts } from "@/components/LoadMoreProducts";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/search")({
@@ -20,7 +22,7 @@ export const Route = createFileRoute("/search")({
 
 function SearchPage() {
   const { q } = Route.useSearch();
-  const { products } = useStore();
+  const { products, loading } = useStore();
   const term = q.trim().toLowerCase();
   const items = term
     ? products.filter(
@@ -37,7 +39,9 @@ function SearchPage() {
         {term ? `Results for “${q}”` : "All products"}
       </h1>
       <p className="mt-1 text-sm text-muted-foreground">{items.length} products</p>
-      {items.length === 0 ? (
+      {loading && products.length === 0 ? (
+        <div className="mt-6"><ProductGridSkeleton className="grid-cols-2 gap-4 md:grid-cols-4" /></div>
+      ) : items.length === 0 ? (
         <p className="mt-10 text-muted-foreground">No products matched your search.</p>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -46,6 +50,7 @@ function SearchPage() {
           ))}
         </div>
       )}
+      {!loading && products.length > 0 && <LoadMoreProducts />}
     </div>
   );
 }

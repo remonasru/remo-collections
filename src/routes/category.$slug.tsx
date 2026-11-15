@@ -2,6 +2,8 @@ import { createFileRoute, notFound } from "@tanstack/react-router";
 import { PackageSearch } from "lucide-react";
 import { useMemo, useState } from "react";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductGridSkeleton } from "@/components/ProductGridSkeleton";
+import { LoadMoreProducts } from "@/components/LoadMoreProducts";
 import {
   applyFilters,
   emptyFilters,
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/category/$slug")({
 
 function CategoryPage() {
   const { category } = Route.useLoaderData() as { category: Category };
-  const { products } = useStore();
+  const { products, loading } = useStore();
   const [sort, setSort] = useState<SortKey>("new");
   const [filters, setFilters] = useState<Filters>(emptyFilters());
 
@@ -94,7 +96,9 @@ function CategoryPage() {
             )}
           </div>
 
-          {items.length === 0 ? (
+          {loading && products.length === 0 ? (
+            <div className="mt-6"><ProductGridSkeleton /></div>
+          ) : items.length === 0 ? (
             <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-10 text-center">
               <PackageSearch className="h-12 w-12 text-muted-foreground" />
               <p className="mt-4 font-display text-lg font-bold">No products found matching your filters</p>
@@ -114,6 +118,7 @@ function CategoryPage() {
               ))}
             </div>
           )}
+          {!loading && products.length > 0 && <LoadMoreProducts />}
         </div>
       </div>
     </div>

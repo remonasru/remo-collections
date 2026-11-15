@@ -6,6 +6,8 @@ import catWomen from "@/assets/cat-women.jpg";
 import catKids from "@/assets/cat-kids.jpg";
 import catAccessories from "@/assets/cat-accessories.jpg";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductGridSkeleton } from "@/components/ProductGridSkeleton";
+import { LoadMoreProducts } from "@/components/LoadMoreProducts";
 import { CATEGORIES, CATEGORY_HEADINGS, CATEGORY_LABELS, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
@@ -37,7 +39,7 @@ const catImages: Record<string, string> = {
 };
 
 function Home() {
-  const { products } = useStore();
+  const { products, loading } = useStore();
   const featured = [...products].sort((a, b) => b.createdAt - a.createdAt).slice(0, 8);
 
   return (
@@ -144,11 +146,14 @@ function Home() {
 
       <section className="mx-auto max-w-7xl px-4 py-10">
         <h2 className="font-display text-2xl font-bold">Latest arrivals</h2>
-        <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-          {featured.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        {loading && products.length === 0 ? (
+          <div className="mt-4"><ProductGridSkeleton className="grid-cols-2 gap-4 md:grid-cols-4" /></div>
+        ) : (
+          <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+            {featured.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        )}
+        <LoadMoreProducts />
       </section>
     </div>
   );

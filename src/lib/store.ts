@@ -174,11 +174,18 @@ export type StoreState = {
   orders: Order[];
   apkUrl: string;
   loading: boolean;
+  loadingMoreProducts: boolean;
+  hasMoreProducts: boolean;
 };
 
 export const WHATSAPP_NUMBER = "918903206428";
 
 const LOCAL_KEY = "remo-basket-v1";
+export const PRODUCTS_PAGE_SIZE = 16;
+
+const PRODUCT_COLUMNS =
+  "id,title,category,sub_category,price,mrp,description,sizes,colors,fabric,recipient,occasion,images,in_stock,created_at";
+const REVIEW_COLUMNS = "id,product_id,name,rating,text,created_at";
 
 const uid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -268,6 +275,8 @@ const initial: StoreState = {
   orders: [],
   apkUrl: "",
   loading: true,
+  loadingMoreProducts: false,
+  hasMoreProducts: true,
 };
 
 let state: StoreState = initial;
@@ -321,47 +330,66 @@ function setBasket(updater: (s: StoreState) => StoreState) {
 
 /* ---------- catalog from the shared database ---------- */
 let fetching: Promise<void> | null = null;
+let productOffset = 0;
+
+function normalizeReviews(rows: ReviewRow[] | null | undefined): Map<string, Review[]> {
+  const byProduct = new Map<string, Review[]>();
+  for (const review of rows ?? []) {
+    const list = byProduct.get(review.product_id) ?? [];
+    list.push({
+      id: review.id,
+      name: review.name,
+      rating: Number(review.rating) || 5,
+      text: review.text ?? "",
+      createdAt: new Date(review.created_at).getTime() || Date.now(),
+    });
+    byProduct.set(review.product_id, list);
+  }
+  return byProduct;
+}
+
+function mergeProducts(existing: Product[], incoming: Product[]): Product[] {
+  const byId = new Map(existing.map((product) => [product.id, product]));
+  for (const product of incoming) {
+    if (!byId.has(product.id)) byId.set(product.id, product);
+  }
+  return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
 
 export function refreshCatalog(): Promise<void> {
   if (typeof window === "undefined") return Promise.resolve();
   fetching ??= (async () => {
     try {
-      const [
-        { data: prodRows, error: pErr },
-        { data: revRows },
-        { data: coupRows },
-        { data: appSettings },
-      ] =
+      const [{ data: prodRows, error: pErr }, { data: coupRows }, { data: appSettings }] =
         await Promise.all([
-          supabase.from("products").select("*").order("created_at", { ascending: false }),
-          supabase.from("reviews").select("*").order("created_at", { ascending: false }),
-          supabase.from("coupons").select("*").order("created_at", { ascending: false }),
+          supabase
+            .from("products")
+            .select(PRODUCT_COLUMNS)
+            .order("created_at", { ascending: false })
+            .range(0, PRODUCTS_PAGE_SIZE - 1),
+          supabase.from("coupons").select("id,code,discount_type,discount_value,min_order,active"),
           supabase.from("app_settings").select("value").eq("key", "apk_url").maybeSingle(),
         ]);
       if (pErr) throw new Error(pErr.message);
-      const byProduct = new Map<string, Review[]>();
-      for (const r of (revRows ?? []) as ReviewRow[]) {
-        const list = byProduct.get(r.product_id) ?? [];
-        list.push({
-          id: r.id,
-          name: r.name,
-          rating: Number(r.rating) || 5,
-          text: r.text ?? "",
-          createdAt: new Date(r.created_at).getTime() || Date.now(),
-        });
-        byProduct.set(r.product_id, list);
-      }
-      const products = ((prodRows ?? []) as ProductRow[]).map((row) =>
+      const rows = (prodRows ?? []) as ProductRow[];
+      const productIds = rows.map((product) => product.id);
+      const { data: revRows } = productIds.length
+        ? await supabase.from("reviews").select(REVIEW_COLUMNS).in("product_id", productIds)
+        : { data: [] };
+      const byProduct = normalizeReviews((revRows ?? []) as ReviewRow[]);
+      const products = rows.map((row) =>
         toProduct(row, byProduct.get(row.id) ?? []),
       );
       const coupons = ((coupRows ?? []) as CouponRow[]).map(toCoupon);
       const apkUrl = appSettings?.value ?? "";
+      productOffset = rows.length;
       // Never clobber unsaved admin edits.
       // Admins hold the full list (including inactive coupons) — don't overwrite it.
       if (!dirty)
         setState((s) => ({
           ...s,
-          products,
+          products: mergeProducts(s.products, products),
+          hasMoreProducts: rows.length === PRODUCTS_PAGE_SIZE,
           coupons: couponsLoaded ? s.coupons : coupons,
           apkUrl,
           loading: false,
@@ -376,11 +404,67 @@ export function refreshCatalog(): Promise<void> {
   return fetching;
 }
 
+export async function loadMoreProducts(): Promise<void> {
+  if (state.loading || state.loadingMoreProducts || !state.hasMoreProducts) return;
+  setState((s) => ({ ...s, loadingMoreProducts: true }));
+  try {
+    const { data, error } = await supabase
+      .from("products")
+      .select(PRODUCT_COLUMNS)
+      .order("created_at", { ascending: false })
+      .range(productOffset, productOffset + PRODUCTS_PAGE_SIZE - 1);
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as ProductRow[];
+    const ids = rows.map((product) => product.id);
+    const { data: reviewRows } = ids.length
+      ? await supabase.from("reviews").select(REVIEW_COLUMNS).in("product_id", ids)
+      : { data: [] };
+    const reviews = normalizeReviews((reviewRows ?? []) as ReviewRow[]);
+    const products = rows.map((row) => toProduct(row, reviews.get(row.id) ?? []));
+    productOffset += rows.length;
+    setState((s) => ({
+      ...s,
+      products: mergeProducts(s.products, products),
+      hasMoreProducts: rows.length === PRODUCTS_PAGE_SIZE,
+      loadingMoreProducts: false,
+    }));
+  } catch (error) {
+    setState((s) => ({ ...s, loadingMoreProducts: false }));
+    throw error;
+  }
+}
+
+export async function loadAllProducts(): Promise<void> {
+  await refreshCatalog();
+  while (state.hasMoreProducts) await loadMoreProducts();
+}
+
+export async function ensureProductsLoaded(ids: string[]): Promise<void> {
+  if (fetching) await fetching;
+  const missing = [...new Set(ids)].filter((id) => !state.products.some((product) => product.id === id));
+  if (!missing.length) return;
+  const { data, error } = await supabase.from("products").select(PRODUCT_COLUMNS).in("id", missing);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as ProductRow[];
+  const productIds = rows.map((product) => product.id);
+  const { data: reviewRows } = productIds.length
+    ? await supabase.from("reviews").select(REVIEW_COLUMNS).in("product_id", productIds)
+    : { data: [] };
+  const reviews = normalizeReviews((reviewRows ?? []) as ReviewRow[]);
+  const products = rows.map((row) => toProduct(row, reviews.get(row.id) ?? []));
+  setState((s) => ({ ...s, products: mergeProducts(s.products, products) }));
+}
+
 function load() {
   if (loaded || typeof window === "undefined") return;
   loaded = true;
   loadBasket();
-  void refreshCatalog();
+  void refreshCatalog().then(() =>
+    ensureProductsLoaded([
+      ...state.cart.map((item) => item.productId),
+      ...state.wishlist,
+    ]).catch(() => undefined),
+  );
   window.addEventListener("focus", () => void refreshCatalog());
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") void refreshCatalog();
@@ -511,6 +595,7 @@ export async function addProduct(p: Omit<Product, "id" | "reviews" | "createdAt"
       },
     },
   });
+  productOffset += 1;
   setState((s) => ({ ...s, products: [product, ...s.products] }));
 }
 

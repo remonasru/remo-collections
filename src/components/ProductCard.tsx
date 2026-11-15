@@ -17,6 +17,7 @@ export function ProductImage({ product, className }: { product: Product; classNa
         alt={product.title}
         loading="lazy"
         decoding="async"
+        sizes="(max-width: 640px) 50vw, (max-width: 1280px) 33vw, 25vw"
         onError={() => setBroken(true)}
         className={className ?? "h-full w-full object-cover"}
       />

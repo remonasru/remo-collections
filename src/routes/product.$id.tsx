@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Star, Truck } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ProductGallery } from "@/components/ProductGallery";
 import {
   addReview,
   addToCart,
   avgRating,
+  ensureProductsLoaded,
   discountPct,
   inr,
   toggleWishlist,
@@ -32,21 +33,36 @@ export const Route = createFileRoute("/product/$id")({
 
 function ProductPage() {
   const { id } = Route.useParams();
-  const { products, wishlist } = useStore();
+  const { products, wishlist, loading } = useStore();
   const navigate = useNavigate();
   const product = products.find((p) => p.id === id);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [size, setSize] = useState("");
   const [rating, setRating] = useState(5);
   const [name, setName] = useState("");
   const [text, setText] = useState("");
 
+  useEffect(() => {
+    if (loading || product) return;
+    let active = true;
+    setDetailLoading(true);
+    void ensureProductsLoaded([id]).catch(() => undefined).finally(() => {
+      if (active) setDetailLoading(false);
+    });
+    return () => { active = false; };
+  }, [id, loading, product]);
+
   if (!product) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-20 text-center">
-        <h1 className="font-display text-2xl font-bold">Product not found</h1>
-        <Link to="/" className="mt-4 inline-block font-semibold text-primary hover:underline">
-          Back to home
-        </Link>
+        {loading || detailLoading ? (
+          <p role="status" className="font-display text-lg font-bold text-muted-foreground">Loading product…</p>
+        ) : (
+          <>
+            <h1 className="font-display text-2xl font-bold">Product not found</h1>
+            <Link to="/" className="mt-4 inline-block font-semibold text-primary hover:underline">Back to home</Link>
+          </>
+        )}
       </div>
     );
   }

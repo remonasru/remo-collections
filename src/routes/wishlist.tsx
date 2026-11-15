@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ProductCard } from "@/components/ProductCard";
+import { ProductGridSkeleton } from "@/components/ProductGridSkeleton";
 import { useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/wishlist")({
@@ -18,13 +19,15 @@ export const Route = createFileRoute("/wishlist")({
 });
 
 function WishlistPage() {
-  const { products, wishlist } = useStore();
+  const { products, wishlist, loading } = useStore();
   const items = products.filter((p) => wishlist.includes(p.id));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="font-display text-2xl font-bold">My Wishlist</h1>
-      {items.length === 0 ? (
+      {loading && wishlist.length > 0 && items.length === 0 ? (
+        <div className="mt-6"><ProductGridSkeleton className="grid-cols-2 gap-4 md:grid-cols-4" count={4} /></div>
+      ) : items.length === 0 ? (
         <p className="mt-6 text-muted-foreground">
           Nothing saved yet.{" "}
           <Link to="/" className="font-semibold text-primary hover:underline">

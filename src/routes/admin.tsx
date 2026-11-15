@@ -29,6 +29,7 @@ import {
   getAdminPass,
   inr,
   loadOrders,
+  loadAllProducts,
   OCCASIONS,
   RECIPIENTS,
   setAdminPass,
@@ -189,6 +190,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     setStaging(true);
+    void loadAllProducts().catch((error) => {
+      console.error("[Admin] Could not load all products", error);
+      toast.error("Some products could not be loaded. Please refresh and try again.");
+    });
     void loadOrders();
     void loadAdminCoupons();
     return () => {
