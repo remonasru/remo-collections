@@ -122,7 +122,7 @@ function Home() {
 
       {CATEGORIES.map((c) => {
         const items = products.filter((p) => p.category === c).slice(0, 4);
-        if (!items.length) return null;
+        if (!items.length && !loading) return null;
         return (
           <section key={c} className="mx-auto max-w-7xl px-4 py-6">
             <div className="flex items-end justify-between">
@@ -135,11 +135,13 @@ function Home() {
                 View all
               </Link>
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
-              {items.map((p) => (
-                <ProductCard key={p.id} product={p} />
-              ))}
-            </div>
+            {loading && !items.length ? (
+              <div className="mt-4"><ProductGridSkeleton className="grid-cols-2 gap-4 md:grid-cols-4" count={4} /></div>
+            ) : (
+              <div className="mt-4 grid grid-cols-2 gap-4 md:grid-cols-4">
+                {items.map((p) => <ProductCard key={p.id} product={p} />)}
+              </div>
+            )}
           </section>
         );
       })}

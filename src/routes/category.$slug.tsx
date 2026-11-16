@@ -45,7 +45,7 @@ export const Route = createFileRoute("/category/$slug")({
 
 function CategoryPage() {
   const { category } = Route.useLoaderData() as { category: Category };
-  const { products, loading } = useStore();
+  const { products, loading, hasMoreProducts } = useStore();
   const [sort, setSort] = useState<SortKey>("new");
   const [filters, setFilters] = useState<Filters>(emptyFilters());
 
@@ -58,7 +58,7 @@ function CategoryPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8">
       <h1 className="font-display text-3xl font-extrabold">{CATEGORY_HEADINGS[category]}</h1>
-      <p className="mt-1 text-sm text-muted-foreground">{items.length} products found</p>
+      <p className="mt-1 text-sm text-muted-foreground">{items.length} products shown</p>
 
       <div className="mt-6 flex gap-6">
         <aside className="hidden w-64 shrink-0 lg:block">
@@ -98,7 +98,7 @@ function CategoryPage() {
 
           {loading && products.length === 0 ? (
             <div className="mt-6"><ProductGridSkeleton /></div>
-          ) : items.length === 0 ? (
+          ) : items.length === 0 && products.length > 0 && !hasMoreProducts ? (
             <div className="mt-10 flex flex-col items-center rounded-xl border border-dashed border-border bg-card p-10 text-center">
               <PackageSearch className="h-12 w-12 text-muted-foreground" />
               <p className="mt-4 font-display text-lg font-bold">No products found matching your filters</p>
@@ -111,6 +111,8 @@ function CategoryPage() {
                 Reset Filters
               </button>
             </div>
+          ) : items.length === 0 ? (
+            <p className="mt-10 text-center text-sm text-muted-foreground">No matching items in this batch. Load more to see additional products.</p>
           ) : (
             <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
               {items.map((p) => (

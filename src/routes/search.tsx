@@ -22,7 +22,7 @@ export const Route = createFileRoute("/search")({
 
 function SearchPage() {
   const { q } = Route.useSearch();
-  const { products, loading } = useStore();
+  const { products, loading, hasMoreProducts } = useStore();
   const term = q.trim().toLowerCase();
   const items = term
     ? products.filter(
@@ -38,11 +38,13 @@ function SearchPage() {
       <h1 className="font-display text-2xl font-bold">
         {term ? `Results for “${q}”` : "All products"}
       </h1>
-      <p className="mt-1 text-sm text-muted-foreground">{items.length} products</p>
+      <p className="mt-1 text-sm text-muted-foreground">{items.length} products shown</p>
       {loading && products.length === 0 ? (
         <div className="mt-6"><ProductGridSkeleton className="grid-cols-2 gap-4 md:grid-cols-4" /></div>
-      ) : items.length === 0 ? (
+      ) : items.length === 0 && !hasMoreProducts ? (
         <p className="mt-10 text-muted-foreground">No products matched your search.</p>
+      ) : items.length === 0 ? (
+        <p className="mt-10 text-muted-foreground">No matches in the products loaded so far. Load more to continue searching.</p>
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
           {items.map((p) => (

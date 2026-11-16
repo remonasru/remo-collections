@@ -350,9 +350,7 @@ function normalizeReviews(rows: ReviewRow[] | null | undefined): Map<string, Rev
 
 function mergeProducts(existing: Product[], incoming: Product[]): Product[] {
   const byId = new Map(existing.map((product) => [product.id, product]));
-  for (const product of incoming) {
-    if (!byId.has(product.id)) byId.set(product.id, product);
-  }
+  for (const product of incoming) byId.set(product.id, product);
   return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -382,14 +380,14 @@ export function refreshCatalog(): Promise<void> {
       );
       const coupons = ((coupRows ?? []) as CouponRow[]).map(toCoupon);
       const apkUrl = appSettings?.value ?? "";
-      productOffset = rows.length;
+      productOffset = Math.max(productOffset, rows.length);
       // Never clobber unsaved admin edits.
       // Admins hold the full list (including inactive coupons) — don't overwrite it.
       if (!dirty)
         setState((s) => ({
           ...s,
           products: mergeProducts(s.products, products),
-          hasMoreProducts: rows.length === PRODUCTS_PAGE_SIZE,
+          hasMoreProducts: s.hasMoreProducts && rows.length === PRODUCTS_PAGE_SIZE,
           coupons: couponsLoaded ? s.coupons : coupons,
           apkUrl,
           loading: false,

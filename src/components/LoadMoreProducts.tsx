@@ -4,9 +4,9 @@ import { LoaderCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export function LoadMoreProducts() {
-  const { hasMoreProducts, loadingMoreProducts } = useStore();
+  const { hasMoreProducts, loading, loadingMoreProducts } = useStore();
 
-  if (!hasMoreProducts) return null;
+  if (loading || !hasMoreProducts) return null;
 
   async function handleLoadMore() {
     try {
