@@ -184,8 +184,9 @@ const LOCAL_KEY = "remo-basket-v1";
 export const PRODUCTS_PAGE_SIZE = 16;
 
 const PRODUCT_COLUMNS =
-  "id,title,category,sub_category,price,mrp,description,sizes,colors,fabric,recipient,occasion,images,in_stock,created_at";
+  "id,title,category,sub_category,price,mrp,description,sizes,colors,fabric,recipient,occasion,in_stock,created_at";
 const REVIEW_COLUMNS = "id,product_id,name,rating,text,created_at";
+const PRODUCT_IMAGE_COLUMNS = "id,images";
 
 const uid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -331,6 +332,9 @@ function setBasket(updater: (s: StoreState) => StoreState) {
 /* ---------- catalog from the shared database ---------- */
 let fetching: Promise<void> | null = null;
 let productOffset = 0;
+const loadedImageIds = new Set<string>();
+const pendingImageLoads = new Map<string, { resolve: () => void; reject: (error: unknown) => void }[]>();
+let imageLoadTimer: ReturnType<typeof setTimeout> | undefined;
 
 function normalizeReviews(rows: ReviewRow[] | null | undefined): Map<string, Review[]> {
   const byProduct = new Map<string, Review[]>();
@@ -350,8 +354,49 @@ function normalizeReviews(rows: ReviewRow[] | null | undefined): Map<string, Rev
 
 function mergeProducts(existing: Product[], incoming: Product[]): Product[] {
   const byId = new Map(existing.map((product) => [product.id, product]));
-  for (const product of incoming) byId.set(product.id, product);
+  for (const product of incoming) {
+    const previous = byId.get(product.id);
+    byId.set(product.id, previous && product.images.length === 0 ? { ...product, images: previous.images } : product);
+  }
   return [...byId.values()].sort((a, b) => b.createdAt - a.createdAt);
+}
+
+async function flushProductImageLoads() {
+  imageLoadTimer = undefined;
+  const batch = [...pendingImageLoads.entries()];
+  pendingImageLoads.clear();
+  const ids = batch.map(([id]) => id);
+  if (!ids.length) return;
+  try {
+    const { data, error } = await supabase.from("products").select(PRODUCT_IMAGE_COLUMNS).in("id", ids);
+    if (error) throw new Error(error.message);
+    const imagesById = new Map(
+      (data ?? []).map((row) => [row.id, (row.images ?? []).filter((image) => typeof image === "string" && image)]),
+    );
+    ids.forEach((id) => loadedImageIds.add(id));
+    setState((s) => ({
+      ...s,
+      products: s.products.map((product) =>
+        imagesById.has(product.id) ? { ...product, images: imagesById.get(product.id) ?? [] } : product,
+      ),
+    }));
+    batch.forEach(([, callbacks]) => callbacks.forEach(({ resolve }) => resolve()));
+  } catch (error) {
+    batch.forEach(([, callbacks]) => callbacks.forEach(({ reject }) => reject(error)));
+  }
+}
+
+export function ensureProductImages(id: string): Promise<void> {
+  if (loadedImageIds.has(id) || state.products.find((product) => product.id === id)?.images.length) {
+    loadedImageIds.add(id);
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    const callbacks = pendingImageLoads.get(id) ?? [];
+    callbacks.push({ resolve, reject });
+    pendingImageLoads.set(id, callbacks);
+    imageLoadTimer ??= setTimeout(() => void flushProductImageLoads(), 50);
+  });
 }
 
 export function refreshCatalog(): Promise<void> {
